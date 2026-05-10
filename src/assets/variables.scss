@@ -1,0 +1,15 @@
+$nav-bg: #7ca79f;
+$nav-accent: #7ca79f;
+$nav-text: #eaeaea;
+$nav-height: 4rem;
+
+$text: #eaeaea;
+$text-muted: rgba(234, 234, 234, 0.55);
+
+$radius: 0.375rem;
+$transition: 0.2s ease;
+
+@mixin focus-ring {
+  outline: 0.125rem solid red;
+  outline-offset: 0.1875rem;
+}

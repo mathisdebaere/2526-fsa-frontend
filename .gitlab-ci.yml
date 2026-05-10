@@ -1,0 +1,47 @@
+image: node:23
+
+stages:
+  - build
+  - deploy
+
+cache:
+  key:
+    files:
+      - pnpm-lock.yaml
+  paths:
+    - node_modules/
+    - .pnpm-store/
+
+before_script:
+  - corepack enable
+  - corepack prepare pnpm@8 --activate
+  - pnpm config set store-dir .pnpm-store
+  - pnpm install
+
+build:
+  stage: build
+  script:
+    - pnpm build
+  artifacts:
+    paths:
+      - dist/
+
+deploy:
+  stage: deploy
+  only:
+    - master
+  dependencies:
+    - build
+  variables:
+    PATH: zilverenschakel.mathisdebaere.ikdoeict.be
+  before_script:
+    - command -v ssh-agent >/dev/null || (apt-get update -y && apt-get install -y openssh-client)
+    - eval "$(ssh-agent -s)"
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > private_key
+    - chmod 400 private_key
+    - ssh-add private_key
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+  script:
+    - ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@cloudplesk.ikdoeict.be" "mkdir -p '$PATH' && rm -rf '$PATH'/*"
+    - scp -o StrictHostKeyChecking=no -r dist/. "$SSH_USERNAME@cloudplesk.ikdoeict.be:$PATH/"
