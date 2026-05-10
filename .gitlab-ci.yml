@@ -33,7 +33,7 @@ deploy:
   dependencies:
     - build
   variables:
-    PATH: zilverenschakel.mathisdebaere.ikdoeict.be/
+    DEPLOY_PATH: zilverenschakel.mathisdebaere.ikdoeict.be/
   before_script:
     - command -v ssh-agent >/dev/null || (apt-get update -y && apt-get install -y openssh-client)
     - eval "$(ssh-agent -s)"
@@ -43,5 +43,5 @@ deploy:
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
   script:
-    - ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@cloudplesk.ikdoeict.be" "mkdir -p '$PATH' && rm -rf '$PATH'/*"
-    - scp -o StrictHostKeyChecking=no -r dist/. "$SSH_USERNAME@cloudplesk.ikdoeict.be:$PATH/"
+    - ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@cloudplesk.ikdoeict.be" "mkdir -p '$DEPLOY_PATH' && rm -rf '$DEPLOY_PATH'/*"
+    - scp -o StrictHostKeyChecking=no -r dist/. "$SSH_USERNAME@cloudplesk.ikdoeict.be:$DEPLOY_PATH/"
