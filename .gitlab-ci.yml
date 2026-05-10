@@ -29,7 +29,7 @@ build:
 deploy:
   stage: deploy
   only:
-    - master
+    - main
   dependencies:
     - build
   variables:
