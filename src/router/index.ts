@@ -74,9 +74,8 @@ router.beforeEach(async (to) => {
 })
 
 router.afterEach((to) => {
-  const appName = 'FSA App'
-  document.title = to.meta.title ? `${to.meta.title} | ${appName}` : appName
-
+  const appName = 'Zilveren Schakel'
+document.title = to.meta.title ? `${to.meta.title} | ${appName}` : `${appName}`
   const { announcement } = useRouteAnnouncer()
   announcement.value = `Navigated to ${to.meta.title ?? to.path}`
 })
