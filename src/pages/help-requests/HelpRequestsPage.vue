@@ -82,7 +82,8 @@ const { mutate: acceptRequest } = useMutation({
             {{ filter.label }}
           </button>
         </div>
-        <select v-model="filterCategory" class="page_select filter-category">
+        <label for="filter-category" class="sr-only">Filter op categorie</label>
+        <select id="filter-category" v-model="filterCategory" class="page_select filter-category">
           <option value="">Alle categorieën</option>
           <option v-for="category in categories" :key="category.id" :value="String(category.id)">{{ category.name }}</option>
         </select>

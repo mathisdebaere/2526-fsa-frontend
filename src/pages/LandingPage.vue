@@ -9,7 +9,7 @@ const menuOpen = ref(false)
   <div class="landing">
     <header class="lh">
       <div class="lh_inner">
-        <RouterLink to="/" class="lh_logo">
+        <RouterLink to="/" class="lh_logo" aria-label="FijneWijk – naar homepage">
           <img src="@/assets/images/logo.png" alt="" aria-hidden="true" class="lh_logo-img" />
         </RouterLink>
         <button class="lh_burger" :aria-expanded="menuOpen" aria-label="Menu openen" @click="menuOpen = !menuOpen">

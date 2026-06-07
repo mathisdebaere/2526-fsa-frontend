@@ -168,8 +168,10 @@ const statusConfig: Record<string, { label: string; variant: 'success' | 'warnin
         <AppButton type="submit" :loading="submitting">Aanmaken</AppButton>
       </form>
       <div class="filters">
-        <input v-model="clientSearch" type="search" class="field-input" />
-        <select v-model="statusFilter" class="field-input">
+        <label for="subscription-search" class="sr-only">Zoek op cliënt</label>
+        <input id="subscription-search" v-model="clientSearch" type="search" class="field-input" placeholder="Zoek op cliënt" />
+        <label for="subscription-status" class="sr-only">Filter op status</label>
+        <select id="subscription-status" v-model="statusFilter" class="field-input">
           <option value="">Alle statussen</option>
           <option value="pending">Openstaand</option>
           <option value="active">Actief</option>

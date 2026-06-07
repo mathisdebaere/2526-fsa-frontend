@@ -138,7 +138,7 @@ const daypartOptions = [
 
         <div v-else class="card-grid">
           <article v-for="volunteer in volunteers" :key="volunteer.id" class="card volunteer-card" @click="$router.push(`/client/volunteers/${volunteer.id}`)">
-            <button class="volunteer-card_fav" :aria-label="isFavorited(volunteer) ? 'Verwijder uit favorieten' : 'Sla op als favoriet'" @click.stop="toggleFavorite({ id: volunteer.id, currently: isFavorited(volunteer) })">
+            <button :class="['volunteer-card_fav', { 'volunteer-card_fav--active': isFavorited(volunteer) }]" :aria-label="isFavorited(volunteer) ? 'Verwijder uit favorieten' : 'Sla op als favoriet'" @click.stop="toggleFavorite({ id: volunteer.id, currently: isFavorited(volunteer) })">
               <i :class="isFavorited(volunteer) ? 'fa-solid fa-heart' : 'fa-regular fa-heart'" aria-hidden="true"></i>
             </button>
 
@@ -266,9 +266,13 @@ const daypartOptions = [
   border-radius: 50%;
   line-height: 1;
   z-index: 1;
+  scale: 150%;
+}
+.volunteer-card_fav--active {
+  color: #ff0000;
 }
 .volunteer-card_fav:hover {
-  color: #e84393;
+  color: #ff000077;
 }
 .volunteer-card_fav:focus-visible {
   outline: 3px solid var(--color-focus);

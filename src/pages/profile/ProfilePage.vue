@@ -287,15 +287,17 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
       <h1 class="profile_title">Mijn profiel</h1>
       <div class="profile_top">
         <section class="profile_card" aria-label="Profielgegevens">
-          <div v-if="!editMode" class="profile_card-header">
-            <AppButton variant="ghost" size="sm" @click="startEdit">Bewerken</AppButton>
-          </div>
-          <div class="profile_avatar-wrap">
-            <AppAvatar :src="(user ?? auth.user)?.profile_photo_url" :name="`${auth.user?.first_name} ${auth.user?.last_name}`" size="lg" />
-            <button class="profile_photo-btn" :disabled="uploadingPhoto" :aria-label="uploadingPhoto ? 'Bezig met uploaden...' : 'Foto wijzigen'" @click="photoInput?.click()">
-              {{ uploadingPhoto ? 'Uploading...' : 'Foto wijzigen' }}
-            </button>
-            <input ref="photoInput" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" aria-hidden="true" @change="handlePhotoUpload" />
+          <div class="profile_card-top">
+            <div class="profile_avatar-wrap">
+              <AppAvatar :src="(user ?? auth.user)?.profile_photo_url" :name="`${auth.user?.first_name} ${auth.user?.last_name}`" size="lg" />
+              <button class="profile_photo-btn" :disabled="uploadingPhoto" :aria-label="uploadingPhoto ? 'Bezig met uploaden...' : 'Foto wijzigen'" @click="photoInput?.click()">
+                {{ uploadingPhoto ? 'Uploading...' : 'Foto wijzigen' }}
+              </button>
+              <input ref="photoInput" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" tabindex="-1" aria-hidden="true" @change="handlePhotoUpload" />
+            </div>
+            <div v-if="!editMode" class="profile_card-header">
+              <AppButton variant="ghost" size="sm" @click="startEdit">Bewerken</AppButton>
+            </div>
           </div>
 
           <div class="profile_details">
@@ -567,10 +569,16 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
   flex: 1;
 }
 
+.profile_card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
 .profile_card-header {
-  position: absolute;
-  top: var(--spacing-xl);
-  right: var(--spacing-xl);
+  flex-shrink: 0;
 }
 
 .profile_dl {
@@ -592,7 +600,7 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
 }
 .value-unknown {
   font-style: italic;
-  opacity: 0.5;
+  color: var(--color-text-muted);
 }
 
 .profile_form {

@@ -6,7 +6,7 @@ import ToastContainer from '@/components/organisms/ToastContainer.vue'
   <a href="#main-content" class="skip-link">Ga naar inhoud</a>
   <div class="auth-layout">
     <header class="auth-layout_header">
-      <RouterLink to="/" class="auth-layout_logo-link">
+      <RouterLink to="/" class="auth-layout_logo-link" aria-label="FijneWijk – naar homepage">
         <img src="@/assets/images/logo.png" alt="" aria-hidden="true" class="auth-layout_logo" />
       </RouterLink>
     </header>

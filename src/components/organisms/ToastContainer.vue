@@ -12,7 +12,7 @@ const iconMap: Record<string, string> = {
 </script>
 
 <template>
-  <div class="toast-container" aria-live="polite" aria-label="Meldingen">
+  <div class="toast-container" role="region" aria-live="polite" aria-label="Meldingen">
     <TransitionGroup name="toast">
       <div v-for="toast in ui.toasts" :key="toast.id" :class="['toast', `toast-${toast.type}`]" role="status">
         <AppIcon :name="iconMap[toast.type] ?? 'info'" :size="18" aria-hidden="true" />

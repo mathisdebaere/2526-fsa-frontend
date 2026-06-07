@@ -64,7 +64,7 @@ async function handleLogout() {
 
   <aside id="app-sidebar" :class="['sidebar', { 'sidebar--mobile-open': mobileOpen }]" aria-label="navigatie">
     <div class="sidebar_header">
-      <RouterLink to="/dashboard" class="sidebar_brand" @click="mobileOpen = false">
+      <RouterLink to="/dashboard" class="sidebar_brand" aria-label="FijneWijk – naar dashboard" @click="mobileOpen = false">
         <img src="@/assets/images/logo.png" alt="" aria-hidden="true" class="sidebar_logo" />
       </RouterLink>
     </div>
