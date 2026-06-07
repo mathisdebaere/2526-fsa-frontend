@@ -114,7 +114,7 @@ const recentIntakes = computed(() => [...toArr<Intake>(intakes.value)].sort((int
       <NoSubscriptionBanner v-if="auth.isClient && noSubscription" :expired="isExpired" />
 
       <template v-if="!auth.isClient || !noSubscription">
-        <div class="card-grid stat-grid">
+        <div class="stat-grid">
           <div class="card stat-card stat-card-blue">
             <span class="stat-card_label">Geplande afspraken</span>
             <span class="stat-card_value">{{ plannedAppointments.length }}</span>
@@ -211,7 +211,15 @@ const recentIntakes = computed(() => [...toArr<Intake>(intakes.value)].sort((int
 }
 
 .stat-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(10rem, 100%), 1fr));
+  display: grid;
+  gap: var(--spacing-md);
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 36rem) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stat-card {
