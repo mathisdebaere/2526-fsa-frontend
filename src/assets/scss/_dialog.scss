@@ -1,0 +1,33 @@
+dialog.app-dialog {
+  border: none;
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xl);
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: 90dvh;
+  overflow-y: auto;
+  background: var(--color-bg-card);
+  margin: auto;
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  &::backdrop {
+    background: rgba(0, 40, 70, 0.55);
+  }
+
+  .dialog-title {
+    font-size: var(--font-size-xl);
+    color: var(--color-primary);
+    margin: 0;
+  }
+
+  .dialog-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+  }
+}

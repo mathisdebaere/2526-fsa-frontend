@@ -1,0 +1,29 @@
+// breakpoints gekopieerd uit ander project
+
+@use 'sass:map';
+
+$breakpoints: (
+  mob: 400,
+  sm:  576,
+  md:  768,
+  lg:  992,
+  xl:  1200,
+  xxl: 1400,
+);
+
+@mixin breakpoint($name) {
+  @media (max-width: #{map.get($breakpoints, $name) - 0.02}px) {
+    @content;
+  }
+}
+
+@mixin breakpoint-up($name) {
+  @media (min-width: #{map.get($breakpoints, $name)}px) {
+    @content;
+  }
+}
+
+@mixin focus-ring {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}

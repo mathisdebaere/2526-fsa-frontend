@@ -1,0 +1,48 @@
+@use './mixins' as *;
+
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  position: relative;
+
+  &--clickable {
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+
+    &:hover {
+      box-shadow: var(--shadow-md);
+    }
+  }
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));
+  gap: var(--spacing-md);
+
+  &--lg {
+    grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));
+  }
+
+  &--top {
+    align-items: start;
+  }
+}
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+@include breakpoint(mob) {
+  .card {
+    padding: var(--spacing-md);
+  }
+}
