@@ -51,6 +51,10 @@ describe('usePaginatedData', () => {
       data: [{ id: 1 }, { id: 2 }],
       total: 50,
       last_page: 3,
+      current_page: 1,
+      per_page: 18,
+      next_page_url: null,
+      prev_page_url: null,
     }
     const data = ref(paginatedResp)
     const { items, total, lastPage } = usePaginatedData(data)

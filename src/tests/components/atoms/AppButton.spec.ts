@@ -11,28 +11,28 @@ describe('AppButton', () => {
   it('heeft standaard variant primary en grootte md', () => {
     const wrapper = mount(AppButton)
     const btn = wrapper.find('[data-testid="app-knop"]')
-    expect(btn.classes()).toContain('btn--primary')
-    expect(btn.classes()).toContain('btn--md')
+    expect(btn.classes()).toContain('btn-primary')
+    expect(btn.classes()).toContain('btn-md')
   })
 
   it('past de variant-klasse danger toe', () => {
     const wrapper = mount(AppButton, { props: { variant: 'danger' } })
-    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn--danger')
+    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn-danger')
   })
 
   it('past de variant-klasse secondary toe', () => {
     const wrapper = mount(AppButton, { props: { variant: 'secondary' } })
-    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn--secondary')
+    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn-secondary')
   })
 
   it('past de grootte-klasse lg toe', () => {
     const wrapper = mount(AppButton, { props: { size: 'lg' } })
-    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn--lg')
+    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn-lg')
   })
 
   it('past de grootte-klasse sm toe', () => {
     const wrapper = mount(AppButton, { props: { size: 'sm' } })
-    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn--sm')
+    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn-sm')
   })
 
   it('is uitgeschakeld wanneer disabled true is', () => {
@@ -56,7 +56,7 @@ describe('AppButton', () => {
 
   it('past de volledige breedte klasse toe', () => {
     const wrapper = mount(AppButton, { props: { fullWidth: true } })
-    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn--full')
+    expect(wrapper.find('[data-testid="app-knop"]').classes()).toContain('btn-full')
   })
 
   it('stelt het type-attribuut in op submit', () => {

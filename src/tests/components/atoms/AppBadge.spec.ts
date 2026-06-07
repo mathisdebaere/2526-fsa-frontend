@@ -10,36 +10,36 @@ describe('AppBadge', () => {
 
   it('heeft standaard de default variant', () => {
     const wrapper = mount(AppBadge)
-    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge--default')
+    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge-default')
   })
 
   it('past de success variant toe', () => {
     const wrapper = mount(AppBadge, { props: { variant: 'success' } })
-    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge--success')
+    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge-success')
   })
 
   it('past de danger variant toe', () => {
     const wrapper = mount(AppBadge, { props: { variant: 'danger' } })
-    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge--danger')
+    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge-danger')
   })
 
   it('past de warning variant toe', () => {
     const wrapper = mount(AppBadge, { props: { variant: 'warning' } })
-    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge--warning')
+    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge-warning')
   })
 
   it('past de info variant toe', () => {
     const wrapper = mount(AppBadge, { props: { variant: 'info' } })
-    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge--info')
+    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge-info')
   })
 
   it('past de grootte-klasse sm toe', () => {
     const wrapper = mount(AppBadge, { props: { size: 'sm' } })
-    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge--sm')
+    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge-sm')
   })
 
   it('past de grootte-klasse lg toe', () => {
     const wrapper = mount(AppBadge, { props: { size: 'lg' } })
-    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge--lg')
+    expect(wrapper.find('[data-testid="app-badge"]').classes()).toContain('badge-lg')
   })
 })

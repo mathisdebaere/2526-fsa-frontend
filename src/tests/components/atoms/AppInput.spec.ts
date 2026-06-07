@@ -35,7 +35,7 @@ describe('AppInput', () => {
 
   it('past de foutstijlklasse toe wanneer error is ingesteld', () => {
     const wrapper = mount(AppInput, { props: { modelValue: '', error: 'Fout' } })
-    expect(wrapper.find('input').classes()).toContain('app-input--error')
+    expect(wrapper.find('input').classes()).toContain('app-input-error')
   })
 
   it('emits update:modelValue wanneer de waarde verandert', async () => {
