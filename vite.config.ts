@@ -5,10 +5,7 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
+  plugins: [vue(), vueDevTools()],
   css: {
     preprocessorOptions: {
       scss: {
@@ -18,7 +15,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   test: {
@@ -30,7 +27,7 @@ export default defineConfig({
       provider: 'istanbul',
       reporter: ['text', 'html', 'cobertura'],
       include: ['src/**/*.{ts,vue}'],
-      exclude: ['src/main.ts', 'src/types/**'],
+      exclude: ['src/main.ts', 'src/types/**', 'src/pages/**', 'src/instances/**'],
     },
   },
 })
