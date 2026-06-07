@@ -1,6 +1,8 @@
 image: node:23
 
 stages:
+  - lint
+  - test
   - build
   - deploy
 
@@ -18,10 +20,26 @@ before_script:
   - pnpm config set store-dir .pnpm-store
   - pnpm install
 
+type-check:
+  stage: lint
+  script:
+    - pnpm type-check
+
+lint:
+  stage: lint
+  script:
+    - pnpm lint
+
+test:
+  stage: test
+  script:
+    - pnpm test:run
+  coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
+
 build:
   stage: build
   script:
-    - pnpm build
+    - pnpm build-only
   artifacts:
     paths:
       - dist/
