@@ -1,16 +1,16 @@
-import './assets/base.css'
+import './assets/main.scss'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { PiniaColada } from '@pinia/colada'
 import App from './App.vue'
 import router from './router'
-import { myAxios } from '@/instances/myAxios'
-
-await myAxios.get('/sanctum/csrf-cookie', { baseURL: import.meta.env.VITE_BASE_URL })
 
 const app = createApp(App)
+const pinia = createPinia()
 
-app.use(createPinia())
+app.use(pinia)
+app.use(PiniaColada)
 app.use(router)
 
 app.mount('#app')

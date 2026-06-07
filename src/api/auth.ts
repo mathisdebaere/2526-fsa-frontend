@@ -1,8 +1,7 @@
 import { myAxios } from '@/instances/myAxios'
 import type { User } from '@/types'
 
-const login = (email: string, password: string) =>
-  myAxios.post('/login', { email, password })
+const login = (email: string, password: string) => myAxios.post('/login', { email, password })
 
 const logout = () => myAxios.post('/logout')
 
