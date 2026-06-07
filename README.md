@@ -1,42 +1,27 @@
-# .
+# FijneWijk platform Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+Vue frontend voor een project voor Zilveren Schakel
 
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+## Installatie (lokaal)
 
 ```sh
+# 1.
 pnpm install
-```
 
-### Compile and Hot-Reload for Development
+# 2.
+cp .env.example .env # Pas deze aan indien nodig
 
-```sh
+# 3.
 pnpm dev
 ```
 
-### Type-Check, Compile and Minify for Production
+### Gebruik van AI
 
-```sh
-pnpm build
-```
+Ik heb AI gebruikt voor volgende dingen:
+
+- zelf geschreven scss door te trekken naar andere pagina's (puur om tijd te besparen)
+- advies geven hoe ik best mijn website WCAG proof maakte
+- advies gegeven hoe ik mijn atomic design structure kon verbeteren en beter kon verdelen.
+- aangeraden om voor cleanere scss code met variants te werken voor bv. mijn buttons
+- privacy pagina genereren
+- landingspagina genereren, wel eigen styling doorgetrokken
