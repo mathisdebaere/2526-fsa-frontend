@@ -36,12 +36,6 @@ const router = createRouter({
       component: () => import('@/pages/auth/RegisterPage.vue'),
       meta: { title: 'Registreren', loginGuard: true },
     },
-    {
-      path: '/logout',
-      name: 'logout',
-      component: () => import('@/pages/auth/LogoutPage.vue'),
-      meta: { title: 'Afmelden' },
-    },
 
     // Dashboard
     {
@@ -159,6 +153,13 @@ const router = createRouter({
       name: 'subscriptions',
       component: () => import('@/pages/subscriptions/SubscriptionsPage.vue'),
       meta: { title: 'Abonnementen', requiresAuth: true, requiresAdvisor: true },
+    },
+
+    {
+      path: '/privacy',
+      name: 'privacy',
+      component: () => import('@/pages/PrivacyPolicyPage.vue'),
+      meta: { title: 'Privacybeleid' },
     },
 
     {
