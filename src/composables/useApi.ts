@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from 'axios'
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) ?? 'http://localhost:8080/api'
+const BASE_URL = (import.meta.env.VITE_BASE_URL as string) ?? 'http://localhost:8080/api'
 
 let instance: AxiosInstance | null = null
 
