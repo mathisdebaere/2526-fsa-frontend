@@ -151,10 +151,6 @@ const volunteerName = computed(() => {
   justify-content: flex-end;
 }
 
-.help-card_own-badge {
-  border: 1px solid var(--color-primary);
-}
-
 .help-card_category {
   font-weight: 700;
   font-size: var(--font-size-base);
