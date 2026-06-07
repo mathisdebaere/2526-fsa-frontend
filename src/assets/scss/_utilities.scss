@@ -22,9 +22,17 @@
   z-index: 9999;
   text-decoration: none;
 
-  &:focus { top: var(--spacing-md); }
+  &:focus {
+    top: var(--spacing-md);
+  }
 }
 
-.text-muted   { color: var(--color-text-muted); }
-.text-danger  { color: var(--color-danger); }
-.text-success { color: var(--color-success); }
+.text-muted {
+  color: var(--color-text-muted);
+}
+.text-danger {
+  color: var(--color-danger);
+}
+.text-success {
+  color: var(--color-success);
+}

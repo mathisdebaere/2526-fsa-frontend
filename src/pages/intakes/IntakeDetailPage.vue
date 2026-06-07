@@ -154,7 +154,6 @@ const roleLabels: Record<string, string> = {
   advisor: 'Adviseur',
 }
 
-
 const notesText = ref('')
 const editingNotes = ref(false)
 
