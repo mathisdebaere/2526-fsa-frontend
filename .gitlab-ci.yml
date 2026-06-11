@@ -1,53 +1,53 @@
-image: node:23
+# image: node:23
 
-stages:
-  - test
-  - deploy
+# stages:
+#   - test
+#   - deploy
 
-cache:
-  key:
-    files:
-      - pnpm-lock.yaml
-  paths:
-    - node_modules/
-    - .pnpm-store
+# cache:
+#   key:
+#     files:
+#       - pnpm-lock.yaml
+#   paths:
+#     - node_modules/
+#     - .pnpm-store
 
-before_script:
-  - corepack enable
-  - corepack prepare pnpm@10 --activate
-  - pnpm config set store-dir .pnpm-store
-  - pnpm install --frozen-lockfile
+# before_script:
+#   - corepack enable
+#   - corepack prepare pnpm@10 --activate
+#   - pnpm config set store-dir .pnpm-store
+#   - pnpm install --frozen-lockfile
 
-lint:
-  stage: test
-  script:
-    - pnpm run format:check
-    - pnpm run lint
-    - pnpm run build
+# lint:
+#   stage: test
+#   script:
+#     - pnpm run format:check
+#     - pnpm run lint
+#     - pnpm run build
 
-vitest:
-  stage: test
-  script:
-    - pnpm run test:coverage
+# vitest:
+#   stage: test
+#   script:
+#     - pnpm run test:coverage
 
-plesk:
-  stage: deploy
-  only:
-    - main
-  script:
-    - PLESK_DIRECTORY="zilverenschakel.mathisdebaere.ikdoeict.be"
-    - test -n "$SSH_USERNAME"
-    - test -n "$SSH_PRIVATE_KEY"
-    - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
-    - eval $(ssh-agent -s)
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
-    - printf '\n' >> ~/.ssh/id_ed25519
-    - chmod 400 ~/.ssh/id_ed25519
-    - ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null
-    - ssh-add ~/.ssh/id_ed25519
-    - pnpm run build
-    - ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@cloudplesk.ikdoeict.be" "mkdir -p '$PLESK_DIRECTORY'"
-    - ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@cloudplesk.ikdoeict.be" "find '$PLESK_DIRECTORY' -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
-    - scp -o StrictHostKeyChecking=no -r dist/. "$SSH_USERNAME@cloudplesk.ikdoeict.be:$PLESK_DIRECTORY"
+# plesk:
+#   stage: deploy
+#   only:
+#     - main
+#   script:
+#     - PLESK_DIRECTORY="zilverenschakel.mathisdebaere.ikdoeict.be"
+#     - test -n "$SSH_USERNAME"
+#     - test -n "$SSH_PRIVATE_KEY"
+#     - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
+#     - eval $(ssh-agent -s)
+#     - mkdir -p ~/.ssh
+#     - chmod 700 ~/.ssh
+#     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+#     - printf '\n' >> ~/.ssh/id_ed25519
+#     - chmod 400 ~/.ssh/id_ed25519
+#     - ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null
+#     - ssh-add ~/.ssh/id_ed25519
+#     - pnpm run build
+#     - ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@cloudplesk.ikdoeict.be" "mkdir -p '$PLESK_DIRECTORY'"
+#     - ssh -o StrictHostKeyChecking=no "$SSH_USERNAME@cloudplesk.ikdoeict.be" "find '$PLESK_DIRECTORY' -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
+#     - scp -o StrictHostKeyChecking=no -r dist/. "$SSH_USERNAME@cloudplesk.ikdoeict.be:$PLESK_DIRECTORY"

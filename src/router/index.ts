@@ -8,6 +8,7 @@ declare module 'vue-router' {
     requiresAdmin?: boolean
     requiresAdvisor?: boolean
     requiresClient?: boolean
+    requiresVolunteer?: boolean
     loginGuard?: boolean
   }
 }
@@ -77,6 +78,12 @@ const router = createRouter({
       name: 'volunteer-detail',
       component: () => import('@/pages/volunteers/VolunteerDetailPage.vue'),
       meta: { title: 'Vrijwilliger', requiresAuth: true, requiresAdvisor: true },
+    },
+    {
+      path: '/volunteer/requests',
+      name: 'volunteer-requests',
+      component: () => import('@/pages/volunteers/VolunteerRequestsPage.vue'),
+      meta: { title: 'Mijn aanvragen', requiresAuth: true, requiresVolunteer: true },
     },
 
     // AFspraken
@@ -206,6 +213,10 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresClient && !auth.isClient) {
+    return { name: 'not-found' }
+  }
+
+  if (to.meta.requiresVolunteer && !auth.isVolunteer) {
     return { name: 'not-found' }
   }
 

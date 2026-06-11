@@ -5,7 +5,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { usePageState, usePaginatedData, PER_PAGE } from '@/composables/usePaginatedData'
-import type { HelpRequest, HelpRequestCategory, PaginatedResponse } from '@/types/api'
+import type { HelpRequest, HelpRequestCategory, VolunteerRequest, PaginatedResponse } from '@/types/api'
+import { computed } from 'vue'
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import HelpRequestList from '@/components/organisms/HelpRequestList.vue'
 import AppPagination from '@/components/atoms/AppPagination.vue'
@@ -51,7 +52,20 @@ const { data: categories } = useQuery({
   query: () => api.get<HelpRequestCategory[]>('/help-request-categories'),
 })
 
+const { data: myVolunteerRequests } = useQuery({
+  key: ['volunteer-requests-incoming'],
+  query: () => api.get<VolunteerRequest[]>('/volunteer-requests'),
+  enabled: () => auth.isVolunteer,
+})
+
+const requestedMap = computed(() => {
+  const map = new Map<number, VolunteerRequest>()
+  for (const r of myVolunteerRequests.value ?? []) map.set(r.help_request_id, r)
+  return map
+})
+
 const acceptingId = ref<number | null>(null)
+const respondingId = ref<number | null>(null)
 
 const { mutate: acceptRequest } = useMutation({
   mutation: (id: number) => api.post(`/help-requests/${id}/accept`),
@@ -61,11 +75,29 @@ const { mutate: acceptRequest } = useMutation({
   onSuccess: () => {
     acceptingId.value = null
     cache.invalidateQueries({ key: ['help-requests'] })
-    toast.success('Je hebt je aangemeld als vrijwilliger,d e cliënt ontvangt een bevestiging.')
+    toast.success('Je hebt je aangemeld als vrijwilliger, de cliënt ontvangt een bevestiging.')
   },
   onError: () => {
     acceptingId.value = null
     toast.error('Aanmelden mislukt.')
+  },
+})
+
+const { mutate: respondRequest } = useMutation({
+  mutation: ({ volunteerRequestId, action }: { volunteerRequestId: number; action: 'accept' | 'decline' }) =>
+    api.post(`/volunteer-requests/${volunteerRequestId}/${action}`),
+  onMutate: ({ volunteerRequestId }) => {
+    respondingId.value = volunteerRequestId
+  },
+  onSuccess: (_, { action }) => {
+    respondingId.value = null
+    cache.invalidateQueries({ key: ['volunteer-requests-incoming'] })
+    cache.invalidateQueries({ key: ['help-requests'] })
+    toast.success(action === 'accept' ? 'Aanvraag geaccepteerd.' : 'Aanvraag geweigerd.')
+  },
+  onError: () => {
+    respondingId.value = null
+    toast.error('Actie mislukt. Probeer opnieuw.')
   },
 })
 </script>
@@ -92,7 +124,7 @@ const { mutate: acceptRequest } = useMutation({
         </div>
       </template>
       <AppSpinner v-if="isLoading" label="Hulpvragen worden ingeladen..." />
-      <HelpRequestList v-else :requests="requests" :accepting-id="acceptingId" @accept="acceptRequest" />
+      <HelpRequestList v-else :requests="requests" :accepting-id="acceptingId" :responding-id="respondingId" :requested-map="requestedMap" @accept="acceptRequest" @respond="({ volunteerRequestId, action }) => respondRequest({ volunteerRequestId, action })" />
 
       <AppPagination v-if="!isLoading && requests?.length && lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
     </div>

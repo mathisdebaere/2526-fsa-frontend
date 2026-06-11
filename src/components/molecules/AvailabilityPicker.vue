@@ -34,9 +34,14 @@ function handleAdd() {
   <section class="availability-picker" aria-label="Beschikbaarheden">
     <ul v-if="availabilities.length" class="availability-picker_list" role="list">
       <li v-for="a in availabilities" :key="a.id" class="availability-picker_item">
-        <AppBadge variant="info">{{ timeLabels[a.time_of_day] }}</AppBadge>
-        <span>{{ formatDate(a.date) }}</span>
-        <button v-if="editable" class="availability-picker_remove" :aria-label="`Verwijder ${a.date} ${timeLabels[a.time_of_day]}`" @click="emit('remove', a.id)"><i class="fa-solid fa-xmark"></i></button>
+        <div class="availability-picker_info">
+          <AppBadge variant="info">{{ timeLabels[a.time_of_day] }}</AppBadge>
+          <span>{{ formatDate(a.date) }}</span>
+        </div>
+        <button v-if="editable" class="availability-picker_remove" :aria-label="`Verwijder ${a.date} ${timeLabels[a.time_of_day]}`" @click="emit('remove', a.id)">
+          <i class="fa-solid fa-xmark"></i>
+          <span class="availability-picker_remove-label">Verwijder beschikbaarheid</span>
+        </button>
       </li>
     </ul>
     <p v-else class="availability-picker_empty">Nog geen beschikbaarheden ingegeven.</p>
@@ -81,8 +86,15 @@ function handleAdd() {
   font-size: var(--font-size-sm);
 }
 
+.availability-picker_info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 0;
+}
+
 .availability-picker_remove {
-  margin-left: auto;
   background: none;
   border: none;
   color: var(--color-danger);
@@ -90,12 +102,44 @@ function handleAdd() {
   padding: 0 0.25rem;
   font-size: 1rem;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.availability-picker_remove-label {
+  display: none;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
 }
 
 .availability-picker_remove:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+@media (max-width: 400px) {
+  .availability-picker_item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .availability-picker_remove {
+    justify-content: center;
+    padding: 0.4rem;
+    border: 1px solid var(--color-danger);
+    border-radius: var(--border-radius);
+    background: var(--color-danger-light, #fef2f2);
+    width: 100%;
+    flex-shrink: unset;
+  }
+
+  .availability-picker_remove-label {
+    display: inline;
+  }
 }
 
 .availability-picker_empty {

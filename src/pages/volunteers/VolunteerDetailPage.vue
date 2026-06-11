@@ -225,7 +225,7 @@ async function confirmDelete() {
 <template>
   <DefaultLayout>
     <div class="page-wrap">
-      <button class="back-btn" @click="router.push(auth?.isClient ? '/client/volunteers' : '/volunteers')"><i class="fa-solid fa-angle-left"></i> Terug</button>
+      <button class="back-btn" @click="router.push(route.query.from ? String(route.query.from) : auth?.isClient ? '/client/volunteers' : '/volunteers')"><i class="fa-solid fa-angle-left"></i> Terug</button>
       <AppSpinner v-if="isLoading" label="Vrijwilliger wordt ingeladen..." />
 
       <template v-else-if="volunteer">

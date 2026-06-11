@@ -41,6 +41,7 @@ const navItems = computed((): NavItem[] => {
     { to: '/dashboard', label: 'Dashboard', icon: 'fa-solid fa-house' },
     { to: '/appointments', label: 'Afspraken', icon: 'fa-solid fa-calendar' },
     { to: '/help-requests', label: 'Hulpvragen', icon: 'fa-solid fa-circle-question' },
+    { to: '/volunteer/requests', label: 'Aanvragen', icon: 'fa-solid fa-envelope' },
   ]
 })
 

@@ -6,7 +6,7 @@ import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateFull as formatDate, formatDate as formatDateTime } from '@/utils/date'
-import type { HelpRequest, Volunteer } from '@/types/api'
+import type { HelpRequest, Volunteer, VolunteerRequest } from '@/types/api'
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppBadge from '@/components/atoms/AppBadge.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
@@ -34,8 +34,20 @@ const { data: volunteer } = useQuery({
   enabled: () => !!request.value?.volunteer_id,
 })
 
-const canAccept = computed(() => auth.isVolunteer && request.value?.status === 'open')
 const canSeeAppointmentDetails = computed(() => auth.isAdvisor)
+
+const { data: myVolunteerRequests } = useQuery({
+  key: ['volunteer-requests-incoming'],
+  query: () => api.get<VolunteerRequest[]>('/volunteer-requests'),
+  enabled: () => auth.isVolunteer,
+})
+
+const myPendingRequest = computed(() =>
+  myVolunteerRequests.value?.find((r) => r.help_request_id === id && r.status === 'pending') ?? null,
+)
+
+const hasPendingRequest = computed(() => !!myPendingRequest.value)
+const canAccept = computed(() => auth.isVolunteer && request.value?.status === 'open' && !hasPendingRequest.value)
 
 const { mutate: acceptRequest, isLoading: accepting } = useMutation({
   mutation: () => api.post(`/help-requests/${id}/accept`),
@@ -46,6 +58,18 @@ const { mutate: acceptRequest, isLoading: accepting } = useMutation({
     toast.success('Je hebt je aangemeld als vrijwilliger, de cliënt ontvangt een bevestiging.')
   },
   onError: () => toast.error('Aanmelden mislukt. Probeer opnieuw.'),
+})
+
+const { mutate: respondToRequest, isLoading: responding } = useMutation({
+  mutation: ({ action }: { action: 'accept' | 'decline' }) =>
+    api.post(`/volunteer-requests/${myPendingRequest.value!.id}/${action}`),
+  onSuccess: (_, { action }) => {
+    cache.invalidateQueries({ key: ['volunteer-requests-incoming'] })
+    cache.invalidateQueries({ key: ['help-requests', id] })
+    cache.invalidateQueries({ key: ['help-requests'] })
+    toast.success(action === 'accept' ? 'Aanvraag geaccepteerd.' : 'Aanvraag geweigerd.')
+  },
+  onError: () => toast.error('Actie mislukt. Probeer opnieuw.'),
 })
 
 const statusConfig: Record<string, { label: string; variant: 'warning' | 'info' | 'success' | 'danger' | 'default' }> = {
@@ -63,7 +87,7 @@ function fmtTime(t: string | null | undefined) {
 <template>
   <DefaultLayout>
     <div class="page">
-      <button class="back-btn" @click="router.push('/help-requests')"><i class="fa-solid fa-angle-left"></i> Terug</button>
+      <button class="back-btn" @click="router.back()"><i class="fa-solid fa-angle-left"></i> Terug</button>
       <AppSpinner v-if="isLoading" label="Hulpvraag wordt ingeladen..." />
 
       <template v-else-if="request">
@@ -78,7 +102,19 @@ function fmtTime(t: string | null | undefined) {
             <AppBadge :variant="statusConfig[request.status]?.variant ?? 'default'" size="lg">
               {{ statusConfig[request.status]?.label ?? request.status }}
             </AppBadge>
-            <AppButton v-if="canAccept" variant="primary" :loading="accepting" @click="acceptRequest()"> Ik wil helpen </AppButton>
+            <template v-if="auth.isVolunteer && request.status === 'open'">
+              <template v-if="hasPendingRequest">
+                <AppButton variant="primary" :loading="responding" @click="respondToRequest({ action: 'accept' })">
+                  <i class="fa-solid fa-check"></i> Accepteren
+                </AppButton>
+                <AppButton variant="danger" :loading="responding" @click="respondToRequest({ action: 'decline' })">
+                  <i class="fa-solid fa-xmark"></i> Weigeren
+                </AppButton>
+              </template>
+              <AppButton v-else variant="primary" :loading="accepting" @click="acceptRequest()">
+                Ik wil helpen
+              </AppButton>
+            </template>
           </div>
         </div>
         <div class="detail-grid">

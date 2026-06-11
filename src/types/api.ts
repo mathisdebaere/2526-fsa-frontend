@@ -142,6 +142,17 @@ export interface Subscription {
   client?: Client
 }
 
+export interface VolunteerRequest {
+  id: number
+  help_request_id: number
+  volunteer_id: number
+  status: 'pending' | 'accepted' | 'declined'
+  created_at: string
+  updated_at: string
+  help_request?: HelpRequest
+  volunteer?: Volunteer
+}
+
 export interface PaginatedResponse<T> {
   current_page: number
   data: T[]

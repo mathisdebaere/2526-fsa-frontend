@@ -248,6 +248,7 @@ const statusFilters = [
                 {{ statusConfig[req.status]?.label ?? req.status }}
               </AppBadge>
               <template v-if="req.status === 'open'">
+                <AppButton variant="secondary" size="sm" @click="router.push(`/client/volunteers?help_request_id=${req.id}`)"> <i class="fa-solid fa-magnifying-glass"></i> Zoek vrijwilliger </AppButton>
                 <AppButton variant="ghost" size="sm" @click="openEdit(req)"> <i class="fa-solid fa-pen"></i> Bewerken </AppButton>
                 <AppButton variant="danger" size="sm" :disabled="deleting" @click="confirmDelete(req)"> <i class="fa-solid fa-trash"></i> Verwijderen </AppButton>
               </template>
@@ -413,6 +414,7 @@ const statusFilters = [
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 </style>

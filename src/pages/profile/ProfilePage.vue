@@ -476,7 +476,7 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
               </select>
             </div>
           </div>
-          <AppButton type="submit" size="sm" :loading="addingAvail || loadingVolunteer" :disabled="loadingVolunteer" style="align-self: flex-start">Toevoegen</AppButton>
+          <AppButton type="submit" size="sm" :loading="addingAvail || loadingVolunteer" :disabled="loadingVolunteer" class="availability-form_submit">Toevoegen</AppButton>
         </form>
       </section>
     </div>
@@ -535,6 +535,7 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
   background: none;
   border: 1px solid var(--color-primary);
   color: var(--color-primary);
+  font-family: var(--font-body);
   font-size: var(--font-size-xs);
   padding: 0.25rem 0.75rem;
   border-radius: var(--border-radius-full);
@@ -765,12 +766,29 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
   font-weight: 600;
 }
 
+@include breakpoint(mob) {
+  .availability-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+  }
+
+  .availability-item :deep(.btn) {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .availability-form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
   padding-top: var(--spacing-md);
   border-top: 1px solid var(--color-border);
+}
+
+.availability-form_submit {
+  align-self: flex-start;
 }
 .availability-form_title {
   font-size: var(--font-size-base);
@@ -784,6 +802,26 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
   align-items: flex-end;
   gap: var(--spacing-md);
   flex-wrap: wrap;
+}
+
+@include breakpoint(mob) {
+  .availability-form_row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .availability-form_group {
+    width: 100%;
+  }
+
+  .availability-form_input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .availability-form_submit {
+    align-self: stretch;
+  }
 }
 
 .availability-form_group {
