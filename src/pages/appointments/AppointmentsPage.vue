@@ -14,6 +14,7 @@ import AppPagination from '@/components/atoms/AppPagination.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppBadge from '@/components/atoms/AppBadge.vue'
 import { useSubscriptionGuard } from '@/composables/useSubscriptionGuard'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const api = useApi()
 const router = useRouter()
@@ -39,7 +40,7 @@ const { data: intakesData } = useQuery({
   enabled: auth.isAdvisor,
 })
 
-const { noSubscription, isExpired } = useSubscriptionGuard()
+const { noSubscription, isExpired, isLoading: subChecking } = useSubscriptionGuard()
 
 const { items: appointments, total, lastPage } = usePaginatedData<Appointment>(pageData)
 
@@ -87,7 +88,8 @@ const userTabs = [
         </button>
       </div>
 
-      <NoSubscriptionBanner v-if="auth.isClient && noSubscription" :expired="isExpired" />
+      <AppSpinner v-if="auth.isClient && subChecking" label="Laden..." />
+      <NoSubscriptionBanner v-else-if="auth.isClient && noSubscription" :expired="isExpired" />
 
       <template v-else>
         <ul v-if="auth.isAdvisor && scheduledIntakes.length" role="list" class="intake-list">
@@ -107,7 +109,7 @@ const userTabs = [
         <AppointmentTable v-if="filteredAppointments.length || isLoading" :appointments="filteredAppointments" :loading="isLoading" @view="(id) => router.push(`/appointments/${id}`)" />
         <p v-else-if="!scheduledIntakes.length" class="page-empty">Geen afspraken gevonden.</p>
 
-        <AppPagination v-if="lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
+        <AppPagination v-if="!isLoading && appointments?.length && lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
       </template>
     </div>
   </DefaultLayout>
@@ -127,6 +129,12 @@ const userTabs = [
 .page_select:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+@media (max-width: 25rem) {
+  .page_select {
+    width: 100%;
+  }
 }
 
 .intake-list {

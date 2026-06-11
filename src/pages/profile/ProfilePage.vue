@@ -1,12 +1,13 @@
 ﻿<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada'
+import { useMySubscriptions } from '@/composables/useMySubscriptions'
 import { useAuthStore } from '@/stores/auth'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useFormErrors } from '@/composables/useFormErrors'
 import { formatDateCompact as formatDate } from '@/utils/date'
-import type { User, Subscription, Volunteer, Availability, Client, HelpRequestCategory, Review } from '@/types/api'
+import type { User, Volunteer, Availability, Client, HelpRequestCategory, Review } from '@/types/api'
 import AppBadge from '@/components/atoms/AppBadge.vue'
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
@@ -82,15 +83,7 @@ function handleSave() {
   updateProfile(payload)
 }
 
-const { data: subscriptions, isLoading: loadingSubs } = useQuery({
-  key: ['subscriptions', 'mine'],
-  query: async (): Promise<Subscription[]> => {
-    const res = await api.get<Subscription[] | { data?: Subscription[] }>('/subscriptions')
-    if (Array.isArray(res)) return res
-    return (res as { data?: Subscription[] }).data ?? []
-  },
-  enabled: () => auth.isClient,
-})
+const { data: subscriptions, isLoading: loadingSubs } = useMySubscriptions()
 
 const activeSubscription = computed(() => {
   const list = Array.isArray(subscriptions.value) ? subscriptions.value : []
@@ -284,7 +277,7 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
 <template>
   <DefaultLayout>
     <div class="profile">
-      <h1 class="profile_title">Mijn profiel</h1>
+      <h1>Mijn profiel</h1>
       <div class="profile_top">
         <section class="profile_card" aria-label="Profielgegevens">
           <div class="profile_card-top">
@@ -495,6 +488,7 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xl);
+  max-width: 56rem;
 }
 
 .profile_top {
@@ -505,7 +499,7 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
 
 @media (max-width: 64rem) {
   .profile_top {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(1, 1fr);
   }
 }
 
@@ -513,10 +507,6 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
   .profile_top {
     grid-template-columns: 1fr;
   }
-}
-.profile_title {
-  font-size: var(--font-size-2xl);
-  color: var(--color-primary);
 }
 
 .profile_card {
@@ -591,12 +581,15 @@ const { mutate: saveCategories, isLoading: savingCategories } = useMutation({
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   white-space: nowrap;
+  text-align: left;
 }
 .profile_dl dd {
   font-size: var(--font-size-sm);
   overflow-wrap: break-word;
   word-break: break-word;
   min-width: 0;
+  margin: 0;
+  text-align: right;
 }
 .value-unknown {
   font-style: italic;

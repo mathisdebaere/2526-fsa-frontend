@@ -12,6 +12,7 @@ import AppBadge from '@/components/atoms/AppBadge.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppPagination from '@/components/atoms/AppPagination.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const api = useApi()
 const toast = useToast()
@@ -20,17 +21,29 @@ const cache = useQueryCache()
 
 const statusFilter = ref('')
 const clientSearch = ref('')
-const showForm = ref(false)
+const createDialog = ref<HTMLDialogElement | null>(null)
 const formClientId = ref('')
 const formStartDate = ref('')
 const formEndDate = ref('')
-const submitting = ref(false)
+const formError = ref('')
+
+function openCreate() {
+  formClientId.value = ''
+  formStartDate.value = ''
+  formEndDate.value = ''
+  formError.value = ''
+  createDialog.value?.showModal()
+}
+
+function closeCreate() {
+  createDialog.value?.close()
+}
 
 const { currentPage, goToPage, resetPage } = usePageState()
 
 watch(statusFilter, () => resetPage())
 
-const { data: pageData } = useQuery({
+const { data: pageData, isLoading } = useQuery({
   key: () => ['subscriptions', statusFilter.value, currentPage.value],
   query: () => {
     const params = new URLSearchParams({
@@ -61,55 +74,93 @@ const filtered = computed<Subscription[]>(() => {
   })
 })
 
-const { mutate: createSubscription } = useMutation({
+const { mutate: createSubscription, isLoading: isSubmitting } = useMutation({
   mutation: (payload: { client_id: number; start_date: string; end_date: string }) => api.post('/subscriptions', payload),
   onSuccess: () => {
     cache.invalidateQueries({ key: ['subscriptions'] })
     toast.success('Abonnement aangemaakt.')
-    showForm.value = false
-    formClientId.value = ''
-    formStartDate.value = ''
-    formEndDate.value = ''
+    closeCreate()
   },
   onError: () => toast.error('Aanmaken mislukt.'),
 })
 
-const { mutate: markPaid } = useMutation({
+let _subSnap: PaginatedResponse<Subscription> | undefined
+
+const { mutate: markPaid, isLoading: paying } = useMutation({
+  onMutate(id: number) {
+    const key = ['subscriptions', statusFilter.value, currentPage.value]
+    _subSnap = cache.getQueryData<PaginatedResponse<Subscription>>(key)
+    if (_subSnap) {
+      const newData = statusFilter.value === 'pending' ? _subSnap.data.filter((s) => s.id !== id) : _subSnap.data.map((s) => (s.id === id ? { ...s, status: 'active' as const, paid_at: new Date().toISOString() } : s))
+      cache.setQueryData<PaginatedResponse<Subscription>>(key, { ..._subSnap, data: newData })
+    }
+  },
   mutation: (id: number) => api.patch(`/subscriptions/${id}/pay`),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['subscriptions'] })
     toast.success('Gemarkeerd als betaald.')
   },
-  onError: () => toast.error('Mislukt.'),
+  onError: () => {
+    if (_subSnap) cache.setQueryData<PaginatedResponse<Subscription>>(['subscriptions', statusFilter.value, currentPage.value], _subSnap)
+    toast.error('Mislukt.')
+  },
 })
 
-const { mutate: cancelSubscription } = useMutation({
+const { mutate: cancelSubscription, isLoading: cancelling } = useMutation({
+  onMutate(id: number) {
+    const key = ['subscriptions', statusFilter.value, currentPage.value]
+    _subSnap = cache.getQueryData<PaginatedResponse<Subscription>>(key)
+    if (_subSnap) {
+      const newData = statusFilter.value === 'pending' || statusFilter.value === 'active' ? _subSnap.data.filter((s) => s.id !== id) : _subSnap.data.map((s) => (s.id === id ? { ...s, status: 'cancelled' as const } : s))
+      cache.setQueryData<PaginatedResponse<Subscription>>(key, { ..._subSnap, data: newData })
+    }
+  },
   mutation: (id: number) => api.put(`/subscriptions/${id}`, { status: 'cancelled' }),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['subscriptions'] })
     toast.success('Geannuleerd.')
   },
-  onError: () => toast.error('Mislukt.'),
+  onError: () => {
+    if (_subSnap) cache.setQueryData<PaginatedResponse<Subscription>>(['subscriptions', statusFilter.value, currentPage.value], _subSnap)
+    toast.error('Mislukt.')
+  },
 })
 
-const { mutate: deleteSubscription } = useMutation({
+const { mutate: deleteSubscription, isLoading: deleting } = useMutation({
+  onMutate(id: number) {
+    const key = ['subscriptions', statusFilter.value, currentPage.value]
+    _subSnap = cache.getQueryData<PaginatedResponse<Subscription>>(key)
+    if (_subSnap) {
+      cache.setQueryData<PaginatedResponse<Subscription>>(key, {
+        ..._subSnap,
+        data: _subSnap.data.filter((s) => s.id !== id),
+        total: Math.max(0, _subSnap.total - 1),
+      })
+    }
+  },
   mutation: (id: number) => api.delete(`/subscriptions/${id}`),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['subscriptions'] })
     toast.success('Verwijderd.')
   },
-  onError: () => toast.error('Mislukt.'),
+  onError: () => {
+    if (_subSnap) cache.setQueryData<PaginatedResponse<Subscription>>(['subscriptions', statusFilter.value, currentPage.value], _subSnap)
+    toast.error('Mislukt.')
+  },
 })
 
 function handleCreate() {
-  if (!formClientId.value || !formStartDate.value || !formEndDate.value) return
-  submitting.value = true
+  formError.value = ''
+  if (!formClientId.value || !formStartDate.value || !formEndDate.value) {
+    formError.value = 'Vul alle verplichte velden in.'
+    return
+  }
+  if (formEndDate.value < formStartDate.value) {
+    formError.value = 'Einddatum moet na de startdatum liggen.'
+    return
+  }
   createSubscription({
     client_id: Number(formClientId.value),
     start_date: formStartDate.value,
     end_date: formEndDate.value,
   })
-  submitting.value = false
 }
 
 async function confirmDelete(id: number) {
@@ -124,6 +175,14 @@ function effectiveStatus(subscription: Subscription): string {
   return subscription.status
 }
 
+const statusFilters = [
+  { value: '', label: 'Alle' },
+  { value: 'pending', label: 'Openstaand' },
+  { value: 'active', label: 'Actief' },
+  { value: 'cancelled', label: 'Geannuleerd' },
+  { value: 'expired', label: 'Verlopen' },
+]
+
 const statusConfig: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'default'; accent: string }> = {
   pending: { label: 'Openstaand', variant: 'warning', accent: 'var(--color-orange)' },
   active: { label: 'Actief', variant: 'success', accent: 'var(--color-sage)' },
@@ -137,50 +196,22 @@ const statusConfig: Record<string, { label: string; variant: 'success' | 'warnin
     <div class="page-wrap">
       <header class="page-header">
         <h1>Abonnementen</h1>
-        <AppButton variant="primary" @click="showForm = !showForm">
-          <template v-if="!showForm"><i class="fa-solid fa-plus"></i> Nieuw abonnement</template>
-          <template v-else>Annuleren</template>
-        </AppButton>
+        <AppButton variant="primary" @click="openCreate"> <i class="fa-solid fa-plus"></i> Abonnement toevoegen </AppButton>
       </header>
-
-      <form v-if="showForm" class="card subscription-form" @submit.prevent="handleCreate">
-        <h2>Nieuw abonnement</h2>
-        <div class="form-group">
-          <label for="subscription-client" class="field-label">Cliënt <span aria-hidden="true"></span></label>
-          <select id="subscription-client" v-model="formClientId" class="field-input" required>
-            <option value="" disabled>Kies een cliënt</option>
-            <option v-for="client in clients" :key="client.id" :value="client.id">
-              {{ client.user ? `${client.user.first_name} ${client.user.last_name}` : `Client #${client.id}` }}
-            </option>
-          </select>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="subscription-start" class="field-label">Startdatum <span aria-hidden="true"></span></label>
-            <input id="subscription-start" v-model="formStartDate" type="date" class="field-input" required />
-          </div>
-          <div class="form-group">
-            <label for="subscription-end" class="field-label">Einddatum <span aria-hidden="true"></span></label>
-            <input id="subscription-end" v-model="formEndDate" type="date" class="field-input" required />
-          </div>
-        </div>
-        <p class="subscription-form_amount">Bedrag: <strong>€ 5,00</strong> (vast tarief)</p>
-        <AppButton type="submit" :loading="submitting">Aanmaken</AppButton>
-      </form>
-      <div class="filters">
-        <label for="subscription-search" class="sr-only">Zoek op cliënt</label>
-        <input id="subscription-search" v-model="clientSearch" type="search" class="field-input" placeholder="Zoek op cliënt" />
-        <label for="subscription-status" class="sr-only">Filter op status</label>
-        <select id="subscription-status" v-model="statusFilter" class="field-input">
-          <option value="">Alle statussen</option>
-          <option value="pending">Openstaand</option>
-          <option value="active">Actief</option>
-          <option value="cancelled">Geannuleerd</option>
-          <option value="expired">Verlopen</option>
-        </select>
+      <div class="tab-bar" role="tablist" aria-label="Filter op status">
+        <button v-for="f in statusFilters" :key="f.value" role="tab" class="tab-bar_btn" :class="{ 'tab-bar_btn--active': statusFilter === f.value }" @click="statusFilter = f.value">
+          {{ f.label }}
+        </button>
       </div>
 
-      <p v-if="!filtered.length" class="page-empty">Geen abonnementen gevonden.</p>
+      <label for="subscription-search" class="sr-only">Zoek op cliënt</label>
+      <div class="search-wrapper">
+        <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true" />
+        <input id="subscription-search" v-model="clientSearch" type="search" class="field-input search-input" placeholder="Zoek op cliënt" />
+      </div>
+      <AppSpinner v-if="isLoading" label="Abonnementen worden ingeladen..." />
+
+      <p v-else-if="!filtered.length" class="page-empty">Geen abonnementen gevonden.</p>
       <ul v-else role="list" class="card-grid">
         <li v-for="subscription in filtered" :key="subscription.id" class="card subscription-card">
           <div class="subscription-card_top">
@@ -202,30 +233,54 @@ const statusConfig: Record<string, { label: string; variant: 'success' | 'warnin
           </div>
 
           <div class="subscription-card_actions">
-            <AppButton v-if="subscription.status === 'pending'" variant="primary" size="sm" @click="markPaid(subscription.id)"> Markeer betaald </AppButton>
-            <AppButton v-if="subscription.status === 'pending' || effectiveStatus(subscription) === 'active'" variant="secondary" size="sm" @click="cancelSubscription(subscription.id)"> Annuleren </AppButton>
-            <AppButton variant="danger" size="sm" @click="confirmDelete(subscription.id)"> Verwijderen </AppButton>
+            <AppButton v-if="subscription.status === 'pending'" variant="primary" size="sm" :loading="paying" :disabled="paying || cancelling || deleting" @click="markPaid(subscription.id)"> Markeer betaald </AppButton>
+            <AppButton v-if="subscription.status === 'pending' || effectiveStatus(subscription) === 'active'" variant="secondary" size="sm" :loading="cancelling" :disabled="paying || cancelling || deleting" @click="cancelSubscription(subscription.id)"> Annuleren </AppButton>
+            <AppButton variant="danger" size="sm" :loading="deleting" :disabled="paying || cancelling || deleting" @click="confirmDelete(subscription.id)"> Verwijderen </AppButton>
           </div>
         </li>
       </ul>
 
-      <AppPagination v-if="lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
+      <AppPagination v-if="!isLoading && pageSubscriptions?.length && lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
     </div>
+
+    <dialog ref="createDialog" class="app-dialog" aria-labelledby="create-sub-title" @close="closeCreate">
+      <h2 id="create-sub-title" class="dialog-title">Abonnement toevoegen</h2>
+
+      <div class="form-group">
+        <label for="subscription-client" class="field-label">Cliënt <span aria-hidden="true"></span></label>
+        <select id="subscription-client" v-model="formClientId" class="field-input">
+          <option value="" disabled>Kies een cliënt</option>
+          <option v-for="client in clients" :key="client.id" :value="client.id">
+            {{ client.user ? `${client.user.first_name} ${client.user.last_name}` : `Client #${client.id}` }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="subscription-start" class="field-label">Startdatum <span aria-hidden="true"></span></label>
+          <input id="subscription-start" v-model="formStartDate" type="date" class="field-input" />
+        </div>
+        <div class="form-group">
+          <label for="subscription-end" class="field-label">Einddatum <span aria-hidden="true"></span></label>
+          <input id="subscription-end" v-model="formEndDate" type="date" class="field-input" />
+        </div>
+      </div>
+
+      <p class="dialog-amount">Bedrag: <strong>€ 5,00</strong> (vast tarief)</p>
+
+      <p v-if="formError" class="dialog-error" role="alert">{{ formError }}</p>
+
+      <div class="dialog-actions">
+        <AppButton variant="primary" size="sm" :loading="isSubmitting" @click="handleCreate">Aanmaken</AppButton>
+        <AppButton variant="ghost" size="sm" :disabled="isSubmitting" @click="closeCreate">Annuleren</AppButton>
+      </div>
+    </dialog>
   </DefaultLayout>
 </template>
 
 <style scoped lang="scss">
-.subscription-form {
-  max-width: 32rem;
-  width: 100%;
-  background: var(--card-bg-primary);
-}
-.subscription-form h2 {
-  font-size: var(--font-size-xl);
-  color: var(--color-primary);
-  margin: 0;
-}
-.subscription-form_amount {
+.dialog-amount {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   margin: 0;
@@ -248,6 +303,26 @@ const statusConfig: Record<string, { label: string; variant: 'success' | 'warnin
   display: flex;
   gap: var(--spacing-md);
   flex-wrap: wrap;
+}
+.filters .field-input {
+  flex: 1;
+  width: auto;
+}
+.search-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.search-icon {
+  position: absolute;
+  left: 0.875rem;
+  color: var(--color-text-muted, #888);
+  pointer-events: none;
+  font-size: 0.875rem;
+}
+.search-wrapper .field-input {
+  padding-left: 2.25rem;
 }
 .field-input {
   padding: 0.65rem 0.875rem;
@@ -275,6 +350,11 @@ const statusConfig: Record<string, { label: string; variant: 'success' | 'warnin
 @include breakpoint(mob) {
   .filters {
     flex-direction: column;
+  }
+  .filters .field-input,
+  .search-wrapper {
+    width: 100%;
+    flex: none;
   }
 }
 
@@ -319,5 +399,15 @@ const statusConfig: Record<string, { label: string; variant: 'success' | 'warnin
   flex-wrap: wrap;
   margin-top: auto;
   padding-top: var(--spacing-sm);
+}
+
+.dialog-error {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  background: var(--color-danger-light);
+  border: 1px solid var(--color-danger);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin: 0;
 }
 </style>

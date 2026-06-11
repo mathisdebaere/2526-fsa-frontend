@@ -53,16 +53,24 @@ async function handleLogout() {
 
 <template>
   <div v-if="mobileOpen" class="sidebar-overlay" aria-hidden="true" @click="mobileOpen = false" />
-  <button class="sidebar-mobile-toggle" :aria-expanded="mobileOpen" aria-controls="app-sidebar" aria-label="Navigatie openen" @click="mobileOpen = !mobileOpen">
-    <span class="sidebar-mobile-toggle_bars">
+  <button v-if="!mobileOpen" class="sidebar-mobile-toggle" aria-controls="app-sidebar" aria-label="Navigatie openen" @click="mobileOpen = true">
+    <span class="sidebar-mobile-toggle_icon">
       <span class="sidebar-mobile-toggle_bar" />
       <span class="sidebar-mobile-toggle_bar" />
       <span class="sidebar-mobile-toggle_bar" />
     </span>
-    <span class="sidebar-mobile-toggle_label">MENU</span>
+    <span class="sidebar-mobile-toggle_label">Menu openen</span>
   </button>
 
   <aside id="app-sidebar" :class="['sidebar', { 'sidebar--mobile-open': mobileOpen }]" aria-label="navigatie">
+    <button class="sidebar-close" aria-label="Navigatie sluiten" @click="mobileOpen = false">
+      <span class="sidebar-close_icon">
+        <span class="sidebar-close_bar sidebar-close_bar--top" />
+        <span class="sidebar-close_bar sidebar-close_bar--bot" />
+      </span>
+      <span class="sidebar-close_label">Menu sluiten</span>
+    </button>
+
     <div class="sidebar_header">
       <RouterLink to="/dashboard" class="sidebar_brand" aria-label="FijneWijk – naar dashboard" @click="mobileOpen = false">
         <img src="@/assets/images/logo.png" alt="" aria-hidden="true" class="sidebar_logo" />
@@ -129,19 +137,21 @@ async function handleLogout() {
   border-radius: var(--border-radius);
   cursor: pointer;
   box-shadow: var(--shadow-md);
+  font-family: var(--font-body);
   color: #fff;
 }
 
-.sidebar-mobile-toggle_bars {
+.sidebar-mobile-toggle_icon {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.15rem;
+  flex-shrink: 0;
 }
 
 .sidebar-mobile-toggle_bar {
   display: block;
-  width: 1.25rem;
-  height: 2px;
+  width: 0.85rem;
+  height: 1.5px;
   background: #fff;
   border-radius: 2px;
 }
@@ -149,12 +159,72 @@ async function handleLogout() {
 .sidebar-mobile-toggle_label {
   font-size: var(--font-size-xs);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .sidebar-mobile-toggle:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+.sidebar-close {
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-family: var(--font-body);
+  margin: 0.75rem 0.75rem 0;
+  flex-shrink: 0;
+  color: #fff;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+}
+
+.sidebar-close_icon {
+  position: relative;
+  width: 0.7rem;
+  height: 0.7rem;
+  flex-shrink: 0;
+}
+
+.sidebar-close_bar {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0.7rem;
+  height: 1.5px;
+  background: #fff;
+  border-radius: 2px;
+
+  &--top {
+    transform: rotate(45deg);
+  }
+
+  &--bot {
+    transform: rotate(-45deg);
+  }
+}
+
+.sidebar-close_label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .sidebar {
@@ -342,9 +412,14 @@ async function handleLogout() {
     display: flex;
   }
 
+  .sidebar-close {
+    display: flex;
+  }
+
   .sidebar {
     transform: translateX(-100%);
     width: min(16rem, 85vw);
+    transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
   }
 
   .sidebar--mobile-open {

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { HelpRequest } from '@/types/api'
 import { useAuthStore } from '@/stores/auth'
 import AppBadge from '@/components/atoms/AppBadge.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 import { formatDate } from '@/utils/date'
 
 const props = defineProps<{
@@ -35,7 +36,9 @@ const volunteerName = computed(() => {
 
 <template>
   <article class="help-card card" :class="`help-card-${request.status}`">
-    <div v-if="accepting" class="help-card_overlay" aria-hidden="true"></div>
+    <div v-if="accepting" class="help-card_overlay" aria-hidden="true">
+      <AppSpinner />
+    </div>
 
     <div class="help-card_header">
       <span class="help-card_category">

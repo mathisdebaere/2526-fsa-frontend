@@ -75,10 +75,10 @@ function closeMenu() {
         <RouterLink to="/login" class="navbar_link">Aanmelden</RouterLink>
       </div>
 
-      <button class="navbar_hamburger" :aria-expanded="menuOpen" aria-controls="mobile-menu" aria-label="open menu" @click="toggleMenu">
-        <span class="navbar_hamburger-bar"></span>
-        <span class="navbar_hamburger-bar"></span>
-        <span class="navbar_hamburger-bar"></span>
+      <button class="navbar_hamburger" :aria-expanded="menuOpen" :aria-label="menuOpen ? 'Menu sluiten' : 'Menu openen'" aria-controls="mobile-menu" @click="toggleMenu">
+        <span class="navbar_hamburger-bar" :class="{ 'navbar_hamburger-bar--top': menuOpen }"></span>
+        <span class="navbar_hamburger-bar" :class="{ 'navbar_hamburger-bar--mid': menuOpen }"></span>
+        <span class="navbar_hamburger-bar" :class="{ 'navbar_hamburger-bar--bot': menuOpen }"></span>
       </button>
     </div>
 
@@ -205,6 +205,17 @@ function closeMenu() {
   border: none;
   cursor: pointer;
   margin-left: auto;
+  border-radius: var(--border-radius);
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+  }
 }
 
 .navbar_hamburger-bar {
@@ -213,12 +224,30 @@ function closeMenu() {
   height: 2px;
   background: #fff;
   border-radius: 2px;
+  transform-origin: center;
+  transition:
+    transform 0.3s cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 0.2s ease;
+
+  &--top {
+    transform: translateY(calc(0.3rem + 2px)) rotate(45deg);
+  }
+
+  &--mid {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  &--bot {
+    transform: translateY(calc(-0.3rem - 2px)) rotate(-45deg);
+  }
 }
 
 @include breakpoint(md) {
   .navbar_nav {
     display: none;
   }
+
   .navbar_hamburger {
     display: flex;
   }

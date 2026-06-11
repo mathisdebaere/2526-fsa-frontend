@@ -11,6 +11,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{ pageChange: [n: number] }>()
 
+function changePage(n: number) {
+  emit('pageChange', n)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 const pages = computed((): (number | '...')[] => {
   const { currentPage: cur, lastPage: last } = props
   if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1)
@@ -34,16 +39,16 @@ const pages = computed((): (number | '...')[] => {
   <div v-if="lastPage > 1" data-testid="paginatie" class="pagination">
     <span class="pagination_info"> Pagina {{ currentPage }} van {{ lastPage }} ({{ total }} resultaten) </span>
     <div class="pagination_controls">
-      <AppButton data-testid="paginatie-vorige" size="sm" variant="ghost" :disabled="currentPage === 1" @click="emit('pageChange', currentPage - 1)"> <i class="fa-solid fa-angle-left"></i> <span class="pagination_btn-label">Vorige</span> </AppButton>
+      <AppButton data-testid="paginatie-vorige" size="sm" variant="ghost" :disabled="currentPage === 1" @click="changePage(currentPage - 1)"> <i class="fa-solid fa-angle-left"></i> <span class="pagination_btn-label">Vorige</span> </AppButton>
 
       <template v-for="p in pages" :key="String(p)">
         <span v-if="p === '...'" class="pagination_ellipsis"></span>
-        <button v-else class="pagination_num" :class="{ 'pagination_num-active': p === currentPage }" :aria-current="p === currentPage ? 'page' : undefined" @click="emit('pageChange', p)">
+        <button v-else class="pagination_num" :class="{ 'pagination_num-active': p === currentPage }" :aria-current="p === currentPage ? 'page' : undefined" @click="changePage(p as number)">
           {{ p }}
         </button>
       </template>
 
-      <AppButton data-testid="paginatie-volgende" size="sm" variant="ghost" :disabled="currentPage === lastPage" @click="emit('pageChange', currentPage + 1)"> <span class="pagination_btn-label">Volgende</span> <i class="fa-solid fa-angle-right"></i> </AppButton>
+      <AppButton data-testid="paginatie-volgende" size="sm" variant="ghost" :disabled="currentPage === lastPage" @click="changePage(currentPage + 1)"> <span class="pagination_btn-label">Volgende</span> <i class="fa-solid fa-angle-right"></i> </AppButton>
     </div>
   </div>
   <p v-else-if="total > 0" class="pagination_info">{{ total }} resultaten</p>

@@ -11,13 +11,14 @@ import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppBadge from '@/components/atoms/AppBadge.vue'
 import AppPagination from '@/components/atoms/AppPagination.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 import NoSubscriptionBanner from '@/components/atoms/NoSubscriptionBanner.vue'
 
 const route = useRoute()
 const router = useRouter()
 const api = useApi()
 const toast = useToast()
-const { noSubscription, isExpired } = useSubscriptionGuard()
+const { noSubscription, isExpired, isLoading: subChecking } = useSubscriptionGuard()
 const { currentPage, goToPage, resetPage } = usePageState()
 
 const availableOn = ref((route.query.available_on as string) ?? '')
@@ -41,7 +42,7 @@ watch(
 
 const queryKey = computed(() => ['client-volunteers', availableOn.value, timeOfDay.value, categoryId.value, savedOnly.value, currentPage.value])
 
-const { data: pageData } = useQuery({
+const { data: pageData, isLoading } = useQuery({
   key: queryKey,
   query: () => {
     const params = new URLSearchParams({ include: 'user,availabilities,categories', per_page: String(PER_PAGE), page: String(currentPage.value) })
@@ -61,6 +62,7 @@ const { data: categories } = useQuery({
 })
 
 const favoriteOverrides = ref<Map<number, boolean>>(new Map())
+const savedTogglePulse = ref(false)
 
 function isFavorited(volunteer: Volunteer): boolean {
   return favoriteOverrides.value.has(volunteer.id) ? favoriteOverrides.value.get(volunteer.id)! : (volunteer.is_favorited ?? false)
@@ -76,6 +78,13 @@ const { mutate: toggleFavorite } = useMutation({
   },
   onMutate({ id, currently }) {
     favoriteOverrides.value.set(id, !currently)
+    toast.success(currently ? 'Verwijderd uit favorieten.' : 'Opgeslagen als favoriet.')
+    if (!currently) {
+      savedTogglePulse.value = true
+      setTimeout(() => {
+        savedTogglePulse.value = false
+      }, 600)
+    }
   },
   onError(_, { id, currently }) {
     favoriteOverrides.value.set(id, currently)
@@ -104,7 +113,8 @@ const daypartOptions = [
         <h1>Vrijwilligers</h1>
       </header>
 
-      <NoSubscriptionBanner v-if="noSubscription" :expired="isExpired" />
+      <AppSpinner v-if="subChecking" label="Laden..." />
+      <NoSubscriptionBanner v-else-if="noSubscription" :expired="isExpired" />
 
       <template v-else>
         <div class="filters">
@@ -121,20 +131,21 @@ const daypartOptions = [
           </div>
 
           <div class="filter-group">
-            <label for="category-filter" class="filter-label">Categorie ervaring</label>
+            <label for="category-filter" class="filter-label">Categorie</label>
             <select id="category-filter" v-model="categoryId" class="field-input">
               <option value="">Alle categorieën</option>
               <option v-for="category in categories" :key="category.id" :value="String(category.id)">{{ category.name }}</option>
             </select>
           </div>
 
-          <button class="saved-toggle" :class="{ 'saved-toggle-active': savedOnly }" :aria-pressed="savedOnly" @click="savedOnly = !savedOnly">
+          <button class="saved-toggle" :class="{ 'saved-toggle-active': savedOnly, 'saved-toggle--pulse': savedTogglePulse }" :aria-pressed="savedOnly" @click="savedOnly = !savedOnly">
             <i :class="savedOnly ? 'fa-solid fa-heart' : 'fa-regular fa-heart'" aria-hidden="true"></i>
-            Enkel opgeslagen
+            Toon favorieten
           </button>
         </div>
+        <AppSpinner v-if="isLoading" label="Vrijwilligers worden ingeladen..." />
 
-        <p v-if="!volunteers?.length" class="page-empty">Geen vrijwilligers gevonden.</p>
+        <p v-else-if="!volunteers?.length" class="page-empty">Geen vrijwilligers gevonden.</p>
 
         <div v-else class="card-grid">
           <article v-for="volunteer in volunteers" :key="volunteer.id" class="card volunteer-card" @click="$router.push(`/client/volunteers/${volunteer.id}`)">
@@ -169,7 +180,7 @@ const daypartOptions = [
           </article>
         </div>
 
-        <AppPagination v-if="lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
+        <AppPagination v-if="!isLoading && volunteers?.length && lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
       </template>
     </div>
   </DefaultLayout>
@@ -241,6 +252,18 @@ const daypartOptions = [
 .saved-toggle:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+.saved-toggle--pulse {
+  animation: fav-pulse 0.6s ease;
+}
+
+@keyframes fav-pulse {
+  0%   { transform: scale(1); }
+  25%  { transform: scale(1.15); }
+  50%  { transform: scale(0.95); }
+  75%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
 }
 
 .volunteer-card {

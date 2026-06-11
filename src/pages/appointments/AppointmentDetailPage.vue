@@ -10,6 +10,7 @@ import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppBadge from '@/components/atoms/AppBadge.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,7 +18,7 @@ const api = useApi()
 const auth = useAuthStore()
 const id = Number(route.params.id)
 
-const { data: appointment } = useQuery({
+const { data: appointment, isLoading } = useQuery({
   key: ['appointments', id],
   query: () => api.get<Appointment>(`/appointments/${id}?include=client.user,volunteer.user,helpRequest.category`),
 })
@@ -71,8 +72,9 @@ const showContact = ref(false)
   <DefaultLayout>
     <div class="page">
       <button class="back-btn" @click="router.push(auth.isClient ? '/client/appointments' : '/appointments')"><i class="fa-solid fa-angle-left"></i> Terug</button>
+      <AppSpinner v-if="isLoading" label="Afspraak wordt ingeladen..." />
 
-      <template v-if="appointment">
+      <template v-else-if="appointment">
         <div class="detail-header">
           <div class="detail-header_title">
             <h1>{{ typeLabel[appointment.type] ?? appointment.type }}</h1>
@@ -304,8 +306,10 @@ const showContact = ref(false)
 
 .meta-field {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-md);
 }
 
 .meta-field_label {
@@ -314,12 +318,14 @@ const showContact = ref(false)
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
+  flex-shrink: 0;
 }
 
 .meta-field_value {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-text);
+  text-align: right;
 }
 
 .detail-desc {

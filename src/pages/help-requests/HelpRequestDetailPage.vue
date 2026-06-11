@@ -11,6 +11,7 @@ import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppBadge from '@/components/atoms/AppBadge.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,7 +23,7 @@ const id = Number(route.params.id)
 
 const showContact = ref(false)
 
-const { data: request } = useQuery({
+const { data: request, isLoading } = useQuery({
   key: ['help-requests', id],
   query: () => api.get<HelpRequest>(`/help-requests/${id}?include=category,client.user,appointments`),
 })
@@ -63,8 +64,9 @@ function fmtTime(t: string | null | undefined) {
   <DefaultLayout>
     <div class="page">
       <button class="back-btn" @click="router.push('/help-requests')"><i class="fa-solid fa-angle-left"></i> Terug</button>
+      <AppSpinner v-if="isLoading" label="Hulpvraag wordt ingeladen..." />
 
-      <template v-if="request">
+      <template v-else-if="request">
         <div class="detail-header">
           <div class="detail-header_left">
             <h1 class="detail-header_title">{{ request.category?.name ?? 'Hulpvraag' }}</h1>
@@ -299,8 +301,10 @@ function fmtTime(t: string | null | undefined) {
 
 .meta-field {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-md);
 }
 
 .meta-field_label {
@@ -309,12 +313,14 @@ function fmtTime(t: string | null | undefined) {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
+  flex-shrink: 0;
 }
 
 .meta-field_value {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-text);
+  text-align: right;
 }
 
 .meta-field_value-capitalize {

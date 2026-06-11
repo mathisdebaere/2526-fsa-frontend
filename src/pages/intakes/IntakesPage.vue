@@ -11,6 +11,7 @@ import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
 import AppBadge from '@/components/atoms/AppBadge.vue'
 import AppPagination from '@/components/atoms/AppPagination.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const api = useApi()
 const router = useRouter()
@@ -21,7 +22,7 @@ const activeFilter = ref<StatusFilter>('pending')
 
 watch(activeFilter, () => resetPage())
 
-const { data: pageData } = useQuery({
+const { data: pageData, isLoading } = useQuery({
   key: () => ['intakes', activeFilter.value, currentPage.value],
   query: () => api.get<PaginatedResponse<Intake>>(`/intakes?status=${activeFilter.value}&include=user&per_page=${PER_PAGE}&page=${currentPage.value}`),
 })
@@ -49,8 +50,9 @@ const roleLabels: Record<string, string> = {
           {{ filter.label }}
         </button>
       </div>
+      <AppSpinner v-if="isLoading" label="Intakes worden ingeladen..." />
 
-      <p v-if="!intakes?.length" class="page-empty">Geen intakes gevonden.</p>
+      <p v-else-if="!intakes?.length" class="page-empty">Geen intakes gevonden.</p>
 
       <ul v-else role="list" class="card-grid card-grid--lg">
         <li v-for="intake in intakes" :key="intake.id" class="card intake-card" :class="intake.status === 'pending' ? 'intake-card-pending' : 'intake-card-scheduled'">
@@ -78,7 +80,7 @@ const roleLabels: Record<string, string> = {
         </li>
       </ul>
 
-      <AppPagination v-if="lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
+      <AppPagination v-if="!isLoading && intakes?.length && lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
     </div>
   </DefaultLayout>
 </template>

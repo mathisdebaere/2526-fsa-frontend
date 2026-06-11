@@ -7,10 +7,11 @@ import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { formatDate, formatDateCompact } from '@/utils/date'
-import type { Volunteer, Review } from '@/types/api'
+import type { Volunteer, Review, Availability } from '@/types/api'
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 import FormField from '@/components/molecules/FormField.vue'
 import AvailabilityPicker from '@/components/molecules/AvailabilityPicker.vue'
 
@@ -35,22 +36,54 @@ const { data: reviews, isLoading: reviewsLoading } = useQuery({
 
 const isOwn = computed(() => auth.user?.id === volunteer.value?.user_id)
 
+let _volunteerSnap: Volunteer | undefined
+
 const { mutate: addAvailability } = useMutation({
-  mutation: (payload: { date: string; time_of_day: 'morning' | 'afternoon' | 'evening' }) => api.post(`/volunteers/${id}/availabilities`, payload),
-  onSuccess: () => {
-    cache.invalidateQueries({ key: ['volunteers', id] })
+  onMutate(payload: { date: string; time_of_day: 'morning' | 'afternoon' | 'evening' }) {
+    _volunteerSnap = cache.getQueryData<Volunteer>(['volunteers', id])
+    if (_volunteerSnap) {
+      const tempAvail: Availability = { id: -Date.now(), date: payload.date, time_of_day: payload.time_of_day, volunteer_id: id }
+      cache.setQueryData<Volunteer>(['volunteers', id], {
+        ..._volunteerSnap,
+        availabilities: [...(_volunteerSnap.availabilities ?? []), tempAvail],
+      })
+    }
+  },
+  mutation: (payload: { date: string; time_of_day: 'morning' | 'afternoon' | 'evening' }) => api.post<Availability>(`/volunteers/${id}/availabilities`, payload),
+  onSuccess(newAvail: Availability) {
+    const current = cache.getQueryData<Volunteer>(['volunteers', id])
+    if (current) {
+      cache.setQueryData<Volunteer>(['volunteers', id], {
+        ...current,
+        availabilities: (current.availabilities ?? []).map((a) => (a.id < 0 ? newAvail : a)),
+      })
+    }
     toast.success('Beschikbaarheid toegevoegd.')
   },
-  onError: () => toast.error('Toevoegen mislukt.'),
+  onError: () => {
+    if (_volunteerSnap) cache.setQueryData<Volunteer>(['volunteers', id], _volunteerSnap)
+    toast.error('Toevoegen mislukt.')
+  },
 })
 
 const { mutate: removeAvailability } = useMutation({
+  onMutate(availId: number) {
+    _volunteerSnap = cache.getQueryData<Volunteer>(['volunteers', id])
+    if (_volunteerSnap) {
+      cache.setQueryData<Volunteer>(['volunteers', id], {
+        ..._volunteerSnap,
+        availabilities: (_volunteerSnap.availabilities ?? []).filter((a) => a.id !== availId),
+      })
+    }
+  },
   mutation: (availId: number) => api.delete(`/volunteers/${id}/availabilities/${availId}`),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['volunteers', id] })
     toast.success('Beschikbaarheid verwijderd.')
   },
-  onError: () => toast.error('Verwijderen mislukt.'),
+  onError: () => {
+    if (_volunteerSnap) cache.setQueryData<Volunteer>(['volunteers', id], _volunteerSnap)
+    toast.error('Verwijderen mislukt.')
+  },
 })
 
 const editingDesc = ref(false)
@@ -70,13 +103,19 @@ function cancelDescriptionEdit() {
 }
 
 const { mutate: saveDescription, isLoading: savingDescription } = useMutation({
+  onMutate() {
+    _volunteerSnap = cache.getQueryData<Volunteer>(['volunteers', id])
+    if (_volunteerSnap) cache.setQueryData<Volunteer>(['volunteers', id], { ..._volunteerSnap, personal_description: descriptionText.value })
+  },
   mutation: () => api.put(`/volunteers/${id}`, { personal_description: descriptionText.value }),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['volunteers', id] })
     toast.success('Beschrijving opgeslagen.')
     editingDesc.value = false
   },
-  onError: () => toast.error('Opslaan mislukt.'),
+  onError: () => {
+    if (_volunteerSnap) cache.setQueryData<Volunteer>(['volunteers', id], _volunteerSnap)
+    toast.error('Opslaan mislukt.')
+  },
 })
 
 const editingNotes = ref(false)
@@ -96,13 +135,19 @@ function cancelNotesEdit() {
 }
 
 const { mutate: saveNotes, isLoading: savingNotes } = useMutation({
+  onMutate() {
+    _volunteerSnap = cache.getQueryData<Volunteer>(['volunteers', id])
+    if (_volunteerSnap) cache.setQueryData<Volunteer>(['volunteers', id], { ..._volunteerSnap, background_notes: backgroundNotes.value })
+  },
   mutation: () => api.put(`/volunteers/${id}`, { background_notes: backgroundNotes.value }),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['volunteers', id] })
     toast.success('Notities opgeslagen.')
     editingNotes.value = false
   },
-  onError: () => toast.error('Opslaan mislukt.'),
+  onError: () => {
+    if (_volunteerSnap) cache.setQueryData<Volunteer>(['volunteers', id], _volunteerSnap)
+    toast.error('Opslaan mislukt.')
+  },
 })
 
 const editingProfile = ref(false)
@@ -126,6 +171,22 @@ watch(
 )
 
 const { mutate: saveProfile, isLoading: savingProfile } = useMutation({
+  onMutate() {
+    _volunteerSnap = cache.getQueryData<Volunteer>(['volunteers', id])
+    if (_volunteerSnap?.user) {
+      cache.setQueryData<Volunteer>(['volunteers', id], {
+        ..._volunteerSnap,
+        user: {
+          ..._volunteerSnap.user,
+          first_name: profileFirstName.value,
+          last_name: profileLastName.value,
+          ...(profileEmail.value ? { email: profileEmail.value } : {}),
+          ...(profilePhone.value ? { phone: profilePhone.value } : {}),
+          ...(profileDob.value ? { date_of_birth: profileDob.value } : {}),
+        },
+      })
+    }
+  },
   mutation: () => {
     const payload: Record<string, string> = {
       first_name: profileFirstName.value,
@@ -137,11 +198,13 @@ const { mutate: saveProfile, isLoading: savingProfile } = useMutation({
     return api.put(`/users/${volunteer.value!.user_id}`, payload)
   },
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['volunteers', id] })
     toast.success('Profiel bijgewerkt.')
     editingProfile.value = false
   },
-  onError: () => toast.error('Bijwerken mislukt.'),
+  onError: () => {
+    if (_volunteerSnap) cache.setQueryData<Volunteer>(['volunteers', id], _volunteerSnap)
+    toast.error('Bijwerken mislukt.')
+  },
 })
 
 const { mutate: deleteUser, isLoading: deleting } = useMutation({
@@ -163,7 +226,9 @@ async function confirmDelete() {
   <DefaultLayout>
     <div class="page-wrap">
       <button class="back-btn" @click="router.push(auth?.isClient ? '/client/volunteers' : '/volunteers')"><i class="fa-solid fa-angle-left"></i> Terug</button>
-      <template v-if="volunteer">
+      <AppSpinner v-if="isLoading" label="Vrijwilliger wordt ingeladen..." />
+
+      <template v-else-if="volunteer">
         <header class="detail-header card">
           <AppAvatar :src="volunteer.user?.profile_photo_url" :name="volunteer.user ? `${volunteer.user.first_name} ${volunteer.user.last_name}` : ''" size="lg" />
           <div class="detail-header_info">
@@ -213,11 +278,11 @@ async function confirmDelete() {
               <dd>{{ volunteer.user?.first_name }} {{ volunteer.user?.last_name }}</dd>
               <template v-if="auth.isAdvisor">
                 <dt>E-mailadres</dt>
-                <dd>{{ volunteer.user?.email ?? '-' }}</dd>
+                <dd :class="{ 'detail-empty': !volunteer.user?.email }">{{ volunteer.user?.email ?? 'Onbekend' }}</dd>
                 <dt>Telefoonnummer</dt>
-                <dd>{{ volunteer.user?.phone ?? '-' }}</dd>
+                <dd :class="{ 'detail-empty': !volunteer.user?.phone }">{{ volunteer.user?.phone ?? 'Onbekend' }}</dd>
                 <dt>Geboortedatum</dt>
-                <dd>{{ volunteer.user?.date_of_birth ? formatDateCompact(volunteer.user.date_of_birth) : '-' }}</dd>
+                <dd :class="{ 'detail-empty': !volunteer.user?.date_of_birth }">{{ volunteer.user?.date_of_birth ? formatDateCompact(volunteer.user.date_of_birth) : 'Onbekend' }}</dd>
               </template>
             </dl>
           </section>
@@ -385,6 +450,7 @@ async function confirmDelete() {
 .info-dl dd {
   margin: 0;
   word-break: break-word;
+  text-align: right;
 }
 
 @include breakpoint(mob) {

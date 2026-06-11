@@ -10,10 +10,11 @@ import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppointmentTable from '@/components/organisms/AppointmentTable.vue'
 import AppPagination from '@/components/atoms/AppPagination.vue'
 import NoSubscriptionBanner from '@/components/atoms/NoSubscriptionBanner.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const api = useApi()
 const router = useRouter()
-const { noSubscription, isExpired } = useSubscriptionGuard()
+const { noSubscription, isExpired, isLoading: subChecking } = useSubscriptionGuard()
 const { currentPage, goToPage, resetPage } = usePagination()
 
 const activeTab = ref('planned')
@@ -51,7 +52,8 @@ const tabs = [
         <h1>Mijn afspraken</h1>
       </header>
 
-      <NoSubscriptionBanner v-if="noSubscription" :expired="isExpired" />
+      <AppSpinner v-if="subChecking" label="Laden..." />
+      <NoSubscriptionBanner v-else-if="noSubscription" :expired="isExpired" />
 
       <template v-else>
         <div class="tab-bar" role="tablist" aria-label="Filter op status">

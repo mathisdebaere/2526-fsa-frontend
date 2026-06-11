@@ -14,7 +14,7 @@ declare module 'vue-router' {
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: () => ({ top: 0, behavior: 'instant' }),
   routes: [
     {
       path: '/',
@@ -217,6 +217,7 @@ router.beforeEach(async (to) => {
 router.afterEach((to) => {
   const appName = 'FijneWijk'
   document.title = to.meta.title ? `${to.meta.title} | ${appName}` : appName
+  window.scrollTo({ top: 0, behavior: 'instant' })
 })
 
 export default router

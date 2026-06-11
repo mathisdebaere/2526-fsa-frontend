@@ -148,6 +148,16 @@ async function tryLogin() {
   border-right: 2px solid var(--color-border);
 }
 
+@media (max-width: 28rem) {
+  .login-form_toggle {
+    flex-direction: column;
+  }
+  .login-form_toggle-btn:not(:last-child) {
+    border-right: none;
+    border-bottom: 2px solid var(--color-border);
+  }
+}
+
 .login-form_toggle-btn--active {
   background: var(--color-primary);
   color: #fff;
@@ -171,6 +181,10 @@ async function tryLogin() {
   text-align: center;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
 }
 
 @include breakpoint(sm) {

@@ -12,14 +12,15 @@ import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import NoSubscriptionBanner from '@/components/atoms/NoSubscriptionBanner.vue'
 import AppointmentTable from '@/components/organisms/AppointmentTable.vue'
 import HelpRequestList from '@/components/organisms/HelpRequestList.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 import { useRouter } from 'vue-router'
 
 const auth = useAuthStore()
 const api = useApi()
 const router = useRouter()
-const { noSubscription, isExpired } = useSubscriptionGuard()
+const { noSubscription, isExpired, isLoading: subChecking } = useSubscriptionGuard()
 
-const { data: appointments } = useQuery({
+const { data: appointments, isLoading } = useQuery({
   key: ['appointments'],
   query: () => api.get<Appointment[]>('/appointments?include=client.user,volunteer.user,helpRequest.category'),
 })
@@ -107,77 +108,83 @@ const recentIntakes = computed(() => [...toArr<Intake>(intakes.value)].sort((int
       <header class="db-header">
         <div>
           <h1 class="db-header_title">Welkom, {{ auth.user?.first_name }}!</h1>
-          <p class="db-header_sub">Hier is een overzicht van uw activitieten</p>
+          <p v-if="!auth.isClient || (!subChecking && !noSubscription)" class="db-header_sub">Hier is een overzicht van uw activitieten</p>
         </div>
       </header>
 
-      <NoSubscriptionBanner v-if="auth.isClient && noSubscription" :expired="isExpired" />
+      <AppSpinner v-if="auth.isClient && subChecking" label="Laden..." />
+      <NoSubscriptionBanner v-else-if="auth.isClient && noSubscription" :expired="isExpired" />
 
-      <template v-if="!auth.isClient || !noSubscription">
+      <template v-if="!auth.isClient || (!subChecking && !noSubscription)">
         <div class="stat-grid">
           <div class="card stat-card stat-card-blue">
             <span class="stat-card_label">Geplande afspraken</span>
-            <span class="stat-card_value">{{ plannedAppointments.length }}</span>
+            <span class="stat-card_value">{{ isLoading ? '-' : plannedAppointments.length }}</span>
           </div>
           <div v-if="auth.isAdvisor" class="card stat-card stat-card-orange">
             <span class="stat-card_label">Openstaande intakes</span>
-            <span class="stat-card_value">{{ toArr(intakes).length }}</span>
+            <span class="stat-card_value">{{ isLoading ? '-' : toArr(intakes).length }}</span>
           </div>
           <div v-else class="card stat-card stat-card-orange">
             <span class="stat-card_label">{{ auth.isClient ? 'Mijn open hulpaanvragen' : 'Open hulpvragen' }}</span>
-            <span class="stat-card_value">{{ openRequests }}</span>
+            <span class="stat-card_value">{{ isLoading ? '-' : openRequests }}</span>
           </div>
           <div class="card stat-card stat-card-teal">
             <span class="stat-card_label">Totaal afspraken</span>
-            <span class="stat-card_value">{{ totalAppointments }}</span>
+            <span class="stat-card_value">{{ isLoading ? '-' : totalAppointments }}</span>
           </div>
         </div>
+
         <section class="dashboard-section" aria-labelledby="appointments-heading">
           <div class="dashboard-section_header">
             <h2 id="appointments-heading">Komende afspraken</h2>
-            <RouterLink to="/appointments" class="dashboard-section_link">Alle afspraken <i class="fa-solid fa-angle-right"></i></RouterLink>
+            <RouterLink to="/appointments" class="dashboard-section_link"><span class="link-label-full">Alle afspraken</span><span class="link-label-short">Alle</span> <i class="fa-solid fa-angle-right"></i></RouterLink>
           </div>
-          <ul v-if="auth.isAdvisor && upcomingIntakes.length" class="intake-preview-list">
-            <li v-for="intake in upcomingIntakes" :key="`intake-${intake.id}`" class="card intake-preview" @click="router.push(`/intakes/${intake.id}`)">
-              <AppAvatar :src="intake.user?.profile_photo_url" :name="intake.user ? `${intake.user.first_name} ${intake.user.last_name}` : `#${intake.user_id}`" size="sm" />
-              <div class="intake-preview_info">
-                <span class="intake-preview_name">
-                  {{ intake.user ? `${intake.user.first_name} ${intake.user.last_name}` : `Gebruiker #${intake.user_id}` }}
-                </span>
-                <span class="intake-preview_date">
-                  Intake op {{ formatDate(intake.appointment!.date) }} om {{ intake.appointment!.start_time?.slice(0, 5) }} Onbekend
-                  {{ intake.appointment!.location }}
-                </span>
-              </div>
-              <AppBadge variant="info">Intake</AppBadge>
-              <RouterLink :to="`/intakes/${intake.id}`" class="link-btn" @click.stop>Bekijken <i class="fa-solid fa-angle-right"></i></RouterLink>
-            </li>
-          </ul>
-
-          <AppointmentTable v-if="upcomingAppointments.length" :appointments="upcomingAppointments" @view="(id) => router.push(`/appointments/${id}`)" />
-
-          <p v-if="!upcomingAppointments.length && (!auth.isAdvisor || !upcomingIntakes.length)" class="page-empty">Geen geplande afspraken.</p>
+          <AppSpinner v-if="isLoading" label="Afspraken worden ingeladen..." />
+          <template v-else>
+            <ul v-if="auth.isAdvisor && upcomingIntakes.length" class="intake-preview-list">
+              <li v-for="intake in upcomingIntakes" :key="`intake-${intake.id}`" class="card intake-preview" @click="router.push(`/intakes/${intake.id}`)">
+                <AppAvatar :src="intake.user?.profile_photo_url" :name="intake.user ? `${intake.user.first_name} ${intake.user.last_name}` : `#${intake.user_id}`" size="sm" />
+                <div class="intake-preview_info">
+                  <span class="intake-preview_name">
+                    {{ intake.user ? `${intake.user.first_name} ${intake.user.last_name}` : `Gebruiker #${intake.user_id}` }}
+                  </span>
+                  <span class="intake-preview_date">
+                    Intake op {{ formatDate(intake.appointment!.date) }} om {{ intake.appointment!.start_time?.slice(0, 5) }}
+                    {{ intake.appointment!.location }}
+                  </span>
+                </div>
+                <AppBadge variant="info">Intake</AppBadge>
+                <RouterLink :to="`/intakes/${intake.id}`" class="link-btn" @click.stop>Bekijken <i class="fa-solid fa-angle-right"></i></RouterLink>
+              </li>
+            </ul>
+            <AppointmentTable v-if="upcomingAppointments.length" :appointments="upcomingAppointments" @view="(id) => router.push(`/appointments/${id}`)" />
+            <p v-if="!upcomingAppointments.length && (!auth.isAdvisor || !upcomingIntakes.length)" class="page-empty">Geen geplande afspraken.</p>
+          </template>
         </section>
 
         <section v-if="auth.isAdvisor" class="dashboard-section" aria-labelledby="intakes-heading">
           <div class="dashboard-section_header">
             <h2 id="intakes-heading">Nieuwste intakes</h2>
-            <RouterLink to="/intakes" class="dashboard-section_link">Alle intakes <i class="fa-solid fa-angle-right"></i></RouterLink>
+            <RouterLink to="/intakes" class="dashboard-section_link"><span class="link-label-full">Alle intakes</span><span class="link-label-short">Alle</span> <i class="fa-solid fa-angle-right"></i></RouterLink>
           </div>
-          <p v-if="!recentIntakes.length" class="page-empty">Geen openstaande intakes.</p>
-          <ul v-else class="intake-preview-list">
-            <li v-for="intake in recentIntakes" :key="intake.id" class="card intake-preview" @click="router.push(`/intakes/${intake.id}`)">
-              <AppAvatar :src="intake.user?.profile_photo_url" :name="intake.user ? `${intake.user.first_name} ${intake.user.last_name}` : `#${intake.user_id}`" size="sm" />
-              <div class="intake-preview_info">
-                <span class="intake-preview_name">
-                  {{ intake.user ? `${intake.user.first_name} ${intake.user.last_name}` : `Gebruiker #${intake.user_id}` }}
-                </span>
-                <span class="intake-preview_date">Aangevraagd op {{ formatDate(intake.created_at) }}</span>
-              </div>
-              <AppBadge variant="warning">Te plannen</AppBadge>
-              <RouterLink :to="`/intakes/${intake.id}`" class="link-btn" @click.stop>Inplannen <i class="fa-solid fa-angle-right"></i></RouterLink>
-            </li>
-          </ul>
+          <AppSpinner v-if="isLoading" label="Intakes worden ingeladen..." />
+          <template v-else>
+            <p v-if="!recentIntakes.length" class="page-empty">Geen openstaande intakes.</p>
+            <ul v-else class="intake-preview-list">
+              <li v-for="intake in recentIntakes" :key="intake.id" class="card intake-preview" @click="router.push(`/intakes/${intake.id}`)">
+                <AppAvatar :src="intake.user?.profile_photo_url" :name="intake.user ? `${intake.user.first_name} ${intake.user.last_name}` : `#${intake.user_id}`" size="sm" />
+                <div class="intake-preview_info">
+                  <span class="intake-preview_name">
+                    {{ intake.user ? `${intake.user.first_name} ${intake.user.last_name}` : `Gebruiker #${intake.user_id}` }}
+                  </span>
+                  <span class="intake-preview_date">Aangevraagd op {{ formatDate(intake.created_at) }}</span>
+                </div>
+                <AppBadge variant="warning">Te plannen</AppBadge>
+                <RouterLink :to="`/intakes/${intake.id}`" class="link-btn" @click.stop>Inplannen <i class="fa-solid fa-angle-right"></i></RouterLink>
+              </li>
+            </ul>
+          </template>
         </section>
 
         <section v-else class="dashboard-section" aria-labelledby="hr-heading">
@@ -307,6 +314,19 @@ const recentIntakes = computed(() => [...toArr<Intake>(intakes.value)].sort((int
 .dashboard-section_link:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+.link-label-short {
+  display: none;
+}
+
+@media (max-width: 21.875rem) {
+  .link-label-full {
+    display: none;
+  }
+  .link-label-short {
+    display: inline;
+  }
 }
 
 .intake-preview-list {
