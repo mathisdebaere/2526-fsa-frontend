@@ -1,0 +1,63 @@
+html.a11y-contrast {
+  --color-primary: #000000;
+  --color-primary-dark: #000000;
+  --color-primary-light: #ffff00;
+  --color-teal: #000000;
+  --color-teal-light: #ffff00;
+
+  --card-bg-primary: #ffffff;
+  --card-bg-teal: #ffffff;
+  --card-bg-orange: #ffffff;
+  --card-bg-sage: #ffffff;
+  --card-bg-yellow: #ffffff;
+  --card-bg-rose: #ffffff;
+  --card-bg-danger: #ffffff;
+
+  --color-danger: #b80000;
+  --color-danger-light: #ffffff;
+  --color-warning: #946200;
+  --color-warning-light: #ffffff;
+  --color-success: #006622;
+  --color-success-light: #ffffff;
+  --color-info: #000000;
+  --color-info-light: #ffff00;
+
+  --color-text: #000000;
+  --color-text-muted: #000000;
+  --color-text-inverse: #ffffff;
+
+  --color-bg: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-nav: #000000;
+
+  --color-border: #000000;
+  --color-focus: #ff0000;
+
+  &,
+  body {
+    background-color: #ffffff;
+    color: #000000;
+  }
+
+  a {
+    color: #0000cc;
+  }
+
+  img {
+    filter: grayscale(1) contrast(1.1);
+  }
+}
+
+html.a11y-readable-font,
+html.a11y-readable-font * {
+  font-family: var(--font-body) !important;
+  letter-spacing: 0.01em;
+}
+
+html.a11y-reduced-motion,
+html.a11y-reduced-motion * {
+  scroll-behavior: auto !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}

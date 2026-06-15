@@ -79,12 +79,8 @@ const volunteerName = computed(() => {
     <footer class="help-card_footer">
       <template v-if="auth.isVolunteer && request.status === 'open'">
         <template v-if="volunteerRequest?.status === 'pending'">
-          <AppButton variant="primary" size="sm" :loading="responding" @click="emit('respond', { volunteerRequestId: volunteerRequest.id, action: 'accept' })">
-            <i class="fa-solid fa-check"></i> Accepteren
-          </AppButton>
-          <AppButton variant="danger" size="sm" :loading="responding" @click="emit('respond', { volunteerRequestId: volunteerRequest.id, action: 'decline' })">
-            <i class="fa-solid fa-xmark"></i> Weigeren
-          </AppButton>
+          <AppButton variant="primary" size="sm" :loading="responding" @click="emit('respond', { volunteerRequestId: volunteerRequest.id, action: 'accept' })"> <i class="fa-solid fa-check"></i> Accepteren </AppButton>
+          <AppButton variant="danger" size="sm" :loading="responding" @click="emit('respond', { volunteerRequestId: volunteerRequest.id, action: 'decline' })"> <i class="fa-solid fa-xmark"></i> Weigeren </AppButton>
         </template>
         <AppButton v-else-if="!volunteerRequest" variant="primary" size="sm" :loading="accepting" @click="emit('accept', request.id)">Ik wil helpen</AppButton>
       </template>
@@ -114,8 +110,6 @@ const volunteerName = computed(() => {
 .help-card:hover {
   box-shadow: var(--shadow-md);
 }
-
-
 
 .help-card_overlay {
   position: absolute;

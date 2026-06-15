@@ -149,9 +149,7 @@ const { mutate: updateRequest, isLoading: updating } = useMutation({
       const category = categories.value?.find((c) => c.id === categoryIdNum)
       cache.setQueryData<PaginatedResponse<HelpRequest>>(_updateSnapKey, {
         ..._updateSnap,
-        data: (_updateSnap.data ?? []).map((r) =>
-          r.id === payload.id ? { ...r, ...payload.data, category: category ?? r.category } : r,
-        ),
+        data: (_updateSnap.data ?? []).map((r) => (r.id === payload.id ? { ...r, ...payload.data, category: category ?? r.category } : r)),
       })
     }
     closeEdit()

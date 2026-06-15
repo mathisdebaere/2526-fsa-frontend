@@ -42,12 +42,9 @@ const { data: myVolunteerRequests } = useQuery({
   enabled: () => auth.isVolunteer,
 })
 
-const myPendingRequest = computed(() =>
-  myVolunteerRequests.value?.find((r) => r.help_request_id === id && r.status === 'pending') ?? null,
-)
+const myPendingRequest = computed(() => myVolunteerRequests.value?.find((r) => r.help_request_id === id && r.status === 'pending') ?? null)
 
 const hasPendingRequest = computed(() => !!myPendingRequest.value)
-const canAccept = computed(() => auth.isVolunteer && request.value?.status === 'open' && !hasPendingRequest.value)
 
 const { mutate: acceptRequest, isLoading: accepting } = useMutation({
   mutation: () => api.post(`/help-requests/${id}/accept`),
@@ -61,8 +58,7 @@ const { mutate: acceptRequest, isLoading: accepting } = useMutation({
 })
 
 const { mutate: respondToRequest, isLoading: responding } = useMutation({
-  mutation: ({ action }: { action: 'accept' | 'decline' }) =>
-    api.post(`/volunteer-requests/${myPendingRequest.value!.id}/${action}`),
+  mutation: ({ action }: { action: 'accept' | 'decline' }) => api.post(`/volunteer-requests/${myPendingRequest.value!.id}/${action}`),
   onSuccess: (_, { action }) => {
     cache.invalidateQueries({ key: ['volunteer-requests-incoming'] })
     cache.invalidateQueries({ key: ['help-requests', id] })
@@ -104,16 +100,10 @@ function fmtTime(t: string | null | undefined) {
             </AppBadge>
             <template v-if="auth.isVolunteer && request.status === 'open'">
               <template v-if="hasPendingRequest">
-                <AppButton variant="primary" :loading="responding" @click="respondToRequest({ action: 'accept' })">
-                  <i class="fa-solid fa-check"></i> Accepteren
-                </AppButton>
-                <AppButton variant="danger" :loading="responding" @click="respondToRequest({ action: 'decline' })">
-                  <i class="fa-solid fa-xmark"></i> Weigeren
-                </AppButton>
+                <AppButton variant="primary" :loading="responding" @click="respondToRequest({ action: 'accept' })"> <i class="fa-solid fa-check"></i> Accepteren </AppButton>
+                <AppButton variant="danger" :loading="responding" @click="respondToRequest({ action: 'decline' })"> <i class="fa-solid fa-xmark"></i> Weigeren </AppButton>
               </template>
-              <AppButton v-else variant="primary" :loading="accepting" @click="acceptRequest()">
-                Ik wil helpen
-              </AppButton>
+              <AppButton v-else variant="primary" :loading="accepting" @click="acceptRequest()"> Ik wil helpen </AppButton>
             </template>
           </div>
         </div>

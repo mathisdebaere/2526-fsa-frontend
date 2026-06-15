@@ -148,5 +148,4 @@ describe('HelpRequestCard', () => {
     await wrapper.find('.link-btn').trigger('click')
     expect(wrapper.emitted('view')?.[0]).toEqual([1])
   })
-
 })

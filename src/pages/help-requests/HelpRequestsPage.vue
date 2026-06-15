@@ -84,8 +84,7 @@ const { mutate: acceptRequest } = useMutation({
 })
 
 const { mutate: respondRequest } = useMutation({
-  mutation: ({ volunteerRequestId, action }: { volunteerRequestId: number; action: 'accept' | 'decline' }) =>
-    api.post(`/volunteer-requests/${volunteerRequestId}/${action}`),
+  mutation: ({ volunteerRequestId, action }: { volunteerRequestId: number; action: 'accept' | 'decline' }) => api.post(`/volunteer-requests/${volunteerRequestId}/${action}`),
   onMutate: ({ volunteerRequestId }) => {
     respondingId.value = volunteerRequestId
   },

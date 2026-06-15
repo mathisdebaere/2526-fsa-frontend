@@ -25,6 +25,13 @@ const faMap: Record<string, string> = {
   info: 'fa-solid fa-circle-info',
   warning: 'fa-solid fa-triangle-exclamation',
   volunteer: 'fa-solid fa-hand-holding-heart',
+  accessibility: 'fa-solid fa-universal-access',
+  contrast: 'fa-solid fa-circle-half-stroke',
+  'text-size': 'fa-solid fa-text-height',
+  font: 'fa-solid fa-font',
+  motion: 'fa-solid fa-person-walking',
+  refresh: 'fa-solid fa-rotate-left',
+  minus: 'fa-solid fa-minus',
 }
 
 const faClass = computed(() => faMap[props.name] ?? 'fa-solid fa-circle-info')
