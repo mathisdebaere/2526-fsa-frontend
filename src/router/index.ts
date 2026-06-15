@@ -8,13 +8,14 @@ declare module 'vue-router' {
     requiresAdmin?: boolean
     requiresAdvisor?: boolean
     requiresClient?: boolean
+    requiresVolunteer?: boolean
     loginGuard?: boolean
   }
 }
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: () => ({ top: 0, behavior: 'instant' }),
   routes: [
     {
       path: '/',
@@ -77,6 +78,12 @@ const router = createRouter({
       name: 'volunteer-detail',
       component: () => import('@/pages/volunteers/VolunteerDetailPage.vue'),
       meta: { title: 'Vrijwilliger', requiresAuth: true, requiresAdvisor: true },
+    },
+    {
+      path: '/volunteer/requests',
+      name: 'volunteer-requests',
+      component: () => import('@/pages/volunteers/VolunteerRequestsPage.vue'),
+      meta: { title: 'Mijn aanvragen', requiresAuth: true, requiresVolunteer: true },
     },
 
     // AFspraken
@@ -209,6 +216,10 @@ router.beforeEach(async (to) => {
     return { name: 'not-found' }
   }
 
+  if (to.meta.requiresVolunteer && !auth.isVolunteer) {
+    return { name: 'not-found' }
+  }
+
   if ((to.name === 'help-requests' || to.name === 'help-request-detail') && auth.isClient) {
     return { name: 'client-help-requests' }
   }
@@ -217,6 +228,7 @@ router.beforeEach(async (to) => {
 router.afterEach((to) => {
   const appName = 'FijneWijk'
   document.title = to.meta.title ? `${to.meta.title} | ${appName}` : appName
+  window.scrollTo({ top: 0, behavior: 'instant' })
 })
 
 export default router

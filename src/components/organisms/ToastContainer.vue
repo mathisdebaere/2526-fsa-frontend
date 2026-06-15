@@ -25,7 +25,7 @@ const iconMap: Record<string, string> = {
 <style scoped>
 .toast-container {
   position: fixed;
-  bottom: var(--spacing-lg);
+  bottom: calc(var(--spacing-lg) + 4rem);
   right: var(--spacing-lg);
   z-index: 9999;
   display: flex;

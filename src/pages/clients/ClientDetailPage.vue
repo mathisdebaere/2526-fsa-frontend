@@ -8,13 +8,14 @@ import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { usePaginatedData } from '@/composables/usePaginatedData'
 import { formatDateCompact as formatDate } from '@/utils/date'
-import type { Client, Subscription } from '@/types/api'
+import type { Client, Subscription, PaginatedResponse } from '@/types/api'
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import ConfirmDialog from '@/components/atoms/ConfirmDialog.vue'
 import AppBadge from '@/components/atoms/AppBadge.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import FormField from '@/components/molecules/FormField.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,7 +26,7 @@ const cache = useQueryCache()
 const { showConfirmationDialog } = useConfirmDialog()
 const id = Number(route.params.id)
 
-const { data: client } = useQuery({
+const { data: client, isLoading } = useQuery({
   key: ['clients', id],
   query: () => api.get<Client>(`/clients/${id}?include=user`),
 })
@@ -53,22 +54,53 @@ function effectiveStatus(subscription: Subscription): string {
   return subscription.status
 }
 
-const { mutate: markPaid } = useMutation({
+let _subListSnap: PaginatedResponse<Subscription> | Subscription[] | undefined
+let _clientSnap: Client | undefined
+
+const { mutate: markPaid, isLoading: paying } = useMutation({
+  onMutate(subscriptionId: number) {
+    const raw = cache.getQueryData(['subscriptions', 'client', id])
+    _subListSnap = raw as typeof _subListSnap
+    if (!raw) return
+    const updateSub = (s: Subscription): Subscription => (s.id === subscriptionId ? { ...s, status: 'active', paid_at: new Date().toISOString() } : s)
+    if (Array.isArray(raw)) {
+      cache.setQueryData<Subscription[]>(['subscriptions', 'client', id], (raw as Subscription[]).map(updateSub))
+    } else {
+      const p = raw as PaginatedResponse<Subscription>
+      cache.setQueryData<PaginatedResponse<Subscription>>(['subscriptions', 'client', id], { ...p, data: p.data.map(updateSub) })
+    }
+  },
   mutation: (subscriptionId: number) => api.patch(`/subscriptions/${subscriptionId}/pay`),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['subscriptions', 'client', id] })
     toast.success('Gemarkeerd als betaald.')
   },
-  onError: () => toast.error('Mislukt.'),
+  onError: () => {
+    if (_subListSnap !== undefined) cache.setQueryData(['subscriptions', 'client', id], _subListSnap as Subscription[])
+    toast.error('Mislukt.')
+  },
 })
 
-const { mutate: cancelSubscription } = useMutation({
+const { mutate: cancelSubscription, isLoading: cancelling } = useMutation({
+  onMutate(subscriptionId: number) {
+    const raw = cache.getQueryData(['subscriptions', 'client', id])
+    _subListSnap = raw as typeof _subListSnap
+    if (!raw) return
+    const updateSub = (s: Subscription): Subscription => (s.id === subscriptionId ? { ...s, status: 'cancelled' } : s)
+    if (Array.isArray(raw)) {
+      cache.setQueryData<Subscription[]>(['subscriptions', 'client', id], (raw as Subscription[]).map(updateSub))
+    } else {
+      const p = raw as PaginatedResponse<Subscription>
+      cache.setQueryData<PaginatedResponse<Subscription>>(['subscriptions', 'client', id], { ...p, data: p.data.map(updateSub) })
+    }
+  },
   mutation: (subscriptionId: number) => api.put(`/subscriptions/${subscriptionId}`, { status: 'cancelled' }),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['subscriptions', 'client', id] })
     toast.success('Geannuleerd.')
   },
-  onError: () => toast.error('Mislukt.'),
+  onError: () => {
+    if (_subListSnap !== undefined) cache.setQueryData(['subscriptions', 'client', id], _subListSnap as Subscription[])
+    toast.error('Mislukt.')
+  },
 })
 
 const subscriptionDialog = ref<HTMLDialogElement | null>(null)
@@ -120,6 +152,22 @@ watch(
 )
 
 const { mutate: saveProfile, isLoading: savingProfile } = useMutation({
+  onMutate() {
+    _clientSnap = cache.getQueryData<Client>(['clients', id])
+    if (_clientSnap?.user) {
+      cache.setQueryData<Client>(['clients', id], {
+        ..._clientSnap,
+        user: {
+          ..._clientSnap.user,
+          first_name: profileFirstName.value,
+          last_name: profileLastName.value,
+          ...(profileEmail.value ? { email: profileEmail.value } : {}),
+          ...(profilePhone.value ? { phone: profilePhone.value } : {}),
+          ...(profileDob.value ? { date_of_birth: profileDob.value } : {}),
+        },
+      })
+    }
+  },
   mutation: () => {
     const payload: Record<string, string> = {
       first_name: profileFirstName.value,
@@ -131,11 +179,13 @@ const { mutate: saveProfile, isLoading: savingProfile } = useMutation({
     return api.put(`/users/${client.value!.user_id}`, payload)
   },
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['clients', id] })
     toast.success('Profiel bijgewerkt.')
     editingProfile.value = false
   },
-  onError: () => toast.error('Bijwerken mislukt.'),
+  onError: () => {
+    if (_clientSnap) cache.setQueryData<Client>(['clients', id], _clientSnap)
+    toast.error('Bijwerken mislukt.')
+  },
 })
 
 const editingDesc = ref(false)
@@ -155,13 +205,19 @@ function cancelDescEdit() {
 }
 
 const { mutate: saveDesc, isLoading: savingDesc } = useMutation({
+  onMutate() {
+    _clientSnap = cache.getQueryData<Client>(['clients', id])
+    if (_clientSnap) cache.setQueryData<Client>(['clients', id], { ..._clientSnap, personal_description: descText.value })
+  },
   mutation: () => api.put(`/clients/${id}`, { personal_description: descText.value }),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['clients', id] })
     toast.success('Beschrijving opgeslagen.')
     editingDesc.value = false
   },
-  onError: () => toast.error('Opslaan mislukt.'),
+  onError: () => {
+    if (_clientSnap) cache.setQueryData<Client>(['clients', id], _clientSnap)
+    toast.error('Opslaan mislukt.')
+  },
 })
 
 const editingNotes = ref(false)
@@ -181,13 +237,19 @@ function cancelNotesEdit() {
 }
 
 const { mutate: saveNotes, isLoading: savingNotes } = useMutation({
+  onMutate() {
+    _clientSnap = cache.getQueryData<Client>(['clients', id])
+    if (_clientSnap) cache.setQueryData<Client>(['clients', id], { ..._clientSnap, background_notes: bgNotes.value })
+  },
   mutation: () => api.put(`/clients/${id}`, { background_notes: bgNotes.value }),
   onSuccess: () => {
-    cache.invalidateQueries({ key: ['clients', id] })
     toast.success('Notities opgeslagen.')
     editingNotes.value = false
   },
-  onError: () => toast.error('Opslaan mislukt.'),
+  onError: () => {
+    if (_clientSnap) cache.setQueryData<Client>(['clients', id], _clientSnap)
+    toast.error('Opslaan mislukt.')
+  },
 })
 
 const { mutate: deleteUser, isLoading: deleting } = useMutation({
@@ -209,8 +271,9 @@ async function confirmDelete() {
     <ConfirmDialog />
     <div class="page-wrap">
       <button class="back-btn" @click="router.push('/clients')"><i class="fa-solid fa-angle-left"></i> Terug</button>
+      <AppSpinner v-if="isLoading" label="Dienstvrager wordt ingeladen..." />
 
-      <template v-if="client">
+      <template v-else-if="client">
         <header class="detail-header card">
           <AppAvatar :src="client.user?.profile_photo_url" :name="`${client.user?.first_name} ${client.user?.last_name}`" size="lg" />
           <div class="detail-header_info">
@@ -318,8 +381,8 @@ async function confirmDelete() {
                   <span v-if="subscription.paid_at" class="subscription-item_paid">Betaald op {{ formatDate(subscription.paid_at) }}</span>
                 </div>
                 <div class="subscription-item_actions">
-                  <AppButton v-if="subscription.status === 'pending'" variant="primary" size="sm" @click="markPaid(subscription.id)">Markeer betaald</AppButton>
-                  <AppButton v-if="subscription.status === 'pending' || effectiveStatus(subscription) === 'active'" variant="secondary" size="sm" @click="cancelSubscription(subscription.id)">Annuleren</AppButton>
+                  <AppButton v-if="subscription.status === 'pending'" variant="primary" size="sm" :loading="paying" :disabled="paying || cancelling" @click="markPaid(subscription.id)">Markeer betaald</AppButton>
+                  <AppButton v-if="subscription.status === 'pending' || effectiveStatus(subscription) === 'active'" variant="secondary" size="sm" :loading="cancelling" :disabled="paying || cancelling" @click="cancelSubscription(subscription.id)">Annuleren</AppButton>
                 </div>
               </li>
             </ul>
@@ -340,7 +403,7 @@ async function confirmDelete() {
   </DefaultLayout>
 
   <dialog ref="subscriptionDialog" class="app-dialog" aria-labelledby="sub-modal-title" @close="closeSubscriptionCreate">
-    <h2 id="sub-modal-title" class="dialog-title">Nieuw abonnement</h2>
+    <h2 id="sub-modal-title" class="dialog-title">Abonnement toevoegen</h2>
 
     <div class="form-row">
       <div class="form-group">
@@ -476,6 +539,7 @@ async function confirmDelete() {
 .info-dl dd {
   margin: 0;
   word-break: break-word;
+  text-align: right;
 }
 
 @include breakpoint(mob) {

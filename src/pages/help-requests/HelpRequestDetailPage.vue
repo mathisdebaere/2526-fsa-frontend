@@ -6,11 +6,12 @@ import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateFull as formatDate, formatDate as formatDateTime } from '@/utils/date'
-import type { HelpRequest, Volunteer } from '@/types/api'
+import type { HelpRequest, Volunteer, VolunteerRequest } from '@/types/api'
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppBadge from '@/components/atoms/AppBadge.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,7 +23,7 @@ const id = Number(route.params.id)
 
 const showContact = ref(false)
 
-const { data: request } = useQuery({
+const { data: request, isLoading } = useQuery({
   key: ['help-requests', id],
   query: () => api.get<HelpRequest>(`/help-requests/${id}?include=category,client.user,appointments`),
 })
@@ -33,8 +34,17 @@ const { data: volunteer } = useQuery({
   enabled: () => !!request.value?.volunteer_id,
 })
 
-const canAccept = computed(() => auth.isVolunteer && request.value?.status === 'open')
 const canSeeAppointmentDetails = computed(() => auth.isAdvisor)
+
+const { data: myVolunteerRequests } = useQuery({
+  key: ['volunteer-requests-incoming'],
+  query: () => api.get<VolunteerRequest[]>('/volunteer-requests'),
+  enabled: () => auth.isVolunteer,
+})
+
+const myPendingRequest = computed(() => myVolunteerRequests.value?.find((r) => r.help_request_id === id && r.status === 'pending') ?? null)
+
+const hasPendingRequest = computed(() => !!myPendingRequest.value)
 
 const { mutate: acceptRequest, isLoading: accepting } = useMutation({
   mutation: () => api.post(`/help-requests/${id}/accept`),
@@ -45,6 +55,17 @@ const { mutate: acceptRequest, isLoading: accepting } = useMutation({
     toast.success('Je hebt je aangemeld als vrijwilliger, de cliënt ontvangt een bevestiging.')
   },
   onError: () => toast.error('Aanmelden mislukt. Probeer opnieuw.'),
+})
+
+const { mutate: respondToRequest, isLoading: responding } = useMutation({
+  mutation: ({ action }: { action: 'accept' | 'decline' }) => api.post(`/volunteer-requests/${myPendingRequest.value!.id}/${action}`),
+  onSuccess: (_, { action }) => {
+    cache.invalidateQueries({ key: ['volunteer-requests-incoming'] })
+    cache.invalidateQueries({ key: ['help-requests', id] })
+    cache.invalidateQueries({ key: ['help-requests'] })
+    toast.success(action === 'accept' ? 'Aanvraag geaccepteerd.' : 'Aanvraag geweigerd.')
+  },
+  onError: () => toast.error('Actie mislukt. Probeer opnieuw.'),
 })
 
 const statusConfig: Record<string, { label: string; variant: 'warning' | 'info' | 'success' | 'danger' | 'default' }> = {
@@ -62,9 +83,10 @@ function fmtTime(t: string | null | undefined) {
 <template>
   <DefaultLayout>
     <div class="page">
-      <button class="back-btn" @click="router.push('/help-requests')"><i class="fa-solid fa-angle-left"></i> Terug</button>
+      <button class="back-btn" @click="router.back()"><i class="fa-solid fa-angle-left"></i> Terug</button>
+      <AppSpinner v-if="isLoading" label="Hulpvraag wordt ingeladen..." />
 
-      <template v-if="request">
+      <template v-else-if="request">
         <div class="detail-header">
           <div class="detail-header_left">
             <h1 class="detail-header_title">{{ request.category?.name ?? 'Hulpvraag' }}</h1>
@@ -76,7 +98,13 @@ function fmtTime(t: string | null | undefined) {
             <AppBadge :variant="statusConfig[request.status]?.variant ?? 'default'" size="lg">
               {{ statusConfig[request.status]?.label ?? request.status }}
             </AppBadge>
-            <AppButton v-if="canAccept" variant="primary" :loading="accepting" @click="acceptRequest()"> Ik wil helpen </AppButton>
+            <template v-if="auth.isVolunteer && request.status === 'open'">
+              <template v-if="hasPendingRequest">
+                <AppButton variant="primary" :loading="responding" @click="respondToRequest({ action: 'accept' })"> <i class="fa-solid fa-check"></i> Accepteren </AppButton>
+                <AppButton variant="danger" :loading="responding" @click="respondToRequest({ action: 'decline' })"> <i class="fa-solid fa-xmark"></i> Weigeren </AppButton>
+              </template>
+              <AppButton v-else variant="primary" :loading="accepting" @click="acceptRequest()"> Ik wil helpen </AppButton>
+            </template>
           </div>
         </div>
         <div class="detail-grid">
@@ -299,8 +327,10 @@ function fmtTime(t: string | null | undefined) {
 
 .meta-field {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-md);
 }
 
 .meta-field_label {
@@ -309,12 +339,14 @@ function fmtTime(t: string | null | undefined) {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
+  flex-shrink: 0;
 }
 
 .meta-field_value {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-text);
+  text-align: right;
 }
 
 .meta-field_value-capitalize {

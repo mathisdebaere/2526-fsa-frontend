@@ -7,15 +7,16 @@ const menuOpen = ref(false)
 
 <template>
   <div class="landing">
+    <a href="#main-content" class="skip-link">Ga naar inhoud</a>
     <header class="lh">
       <div class="lh_inner">
         <RouterLink to="/" class="lh_logo" aria-label="FijneWijk – naar homepage">
           <img src="@/assets/images/logo.png" alt="" aria-hidden="true" class="lh_logo-img" />
         </RouterLink>
-        <button class="lh_burger" :aria-expanded="menuOpen" aria-label="Menu openen" @click="menuOpen = !menuOpen">
-          <span class="lh_burger-bar"></span>
-          <span class="lh_burger-bar"></span>
-          <span class="lh_burger-bar"></span>
+        <button class="lh_burger" :aria-expanded="menuOpen" :aria-label="menuOpen ? 'Menu sluiten' : 'Menu openen'" @click="menuOpen = !menuOpen">
+          <span class="lh_burger-bar" :class="{ 'lh_burger-bar--top': menuOpen }"></span>
+          <span class="lh_burger-bar" :class="{ 'lh_burger-bar--mid': menuOpen }"></span>
+          <span class="lh_burger-bar" :class="{ 'lh_burger-bar--bot': menuOpen }"></span>
         </button>
         <nav class="lh_nav" :class="{ 'lh_nav--open': menuOpen }" aria-label="Hoofdnavigatie">
           <RouterLink to="/login" class="lh_nav-link" @click="menuOpen = false">Aanmelden</RouterLink>
@@ -24,7 +25,7 @@ const menuOpen = ref(false)
       </div>
     </header>
 
-    <section class="hero" aria-labelledby="hero-heading">
+    <section id="main-content" class="hero" aria-labelledby="hero-heading">
       <img src="@/assets/images/hero-fijnewijk.png" alt="" aria-hidden="true" class="hero_bg" />
       <div class="hero_overlay"></div>
       <div class="hero_inner">
@@ -335,9 +336,20 @@ const menuOpen = ref(false)
     background: none;
     border: none;
     cursor: pointer;
+    border-radius: var(--border-radius);
+    transition: background 0.15s ease;
 
     @include breakpoint(md) {
       display: flex;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    &:focus-visible {
+      outline: 3px solid var(--color-focus);
+      outline-offset: 2px;
     }
   }
 
@@ -347,6 +359,23 @@ const menuOpen = ref(false)
     height: 2px;
     background: #fff;
     border-radius: 2px;
+    transform-origin: center;
+    transition:
+      transform 0.3s cubic-bezier(0.23, 1, 0.32, 1),
+      opacity 0.2s ease;
+
+    &--top {
+      transform: translateY(calc(0.3rem + 2px)) rotate(45deg);
+    }
+
+    &--mid {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+
+    &--bot {
+      transform: translateY(calc(-0.3rem - 2px)) rotate(-45deg);
+    }
   }
 }
 

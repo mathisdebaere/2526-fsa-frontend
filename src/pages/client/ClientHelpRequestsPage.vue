@@ -14,12 +14,13 @@ import AppBadge from '@/components/atoms/AppBadge.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
 import AppPagination from '@/components/atoms/AppPagination.vue'
 import NoSubscriptionBanner from '@/components/atoms/NoSubscriptionBanner.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const api = useApi()
 const toast = useToast()
 const cache = useQueryCache()
 const router = useRouter()
-const { noSubscription, isExpired } = useSubscriptionGuard()
+const { noSubscription, isExpired, isLoading: subChecking } = useSubscriptionGuard()
 const { showConfirmationDialog } = useConfirmDialog()
 const { currentPage, goToPage, resetPage } = usePageState()
 
@@ -38,11 +39,10 @@ const region = ref('')
 const date = ref('')
 const time = ref('')
 const notes = ref('')
-const submitting = ref(false)
 
 watch(statusFilter, () => resetPage())
 
-const { data: pageData } = useQuery({
+const { data: pageData, isLoading } = useQuery({
   key: () => ['client-help-requests', statusFilter.value, currentPage.value],
   query: () => {
     const params = new URLSearchParams({ include: 'category', per_page: String(PER_PAGE), page: String(currentPage.value) })
@@ -58,11 +58,33 @@ const { data: categories } = useQuery({
   query: () => api.get<HelpRequestCategory[]>('/help-request-categories'),
 })
 
-const { mutate: createRequest } = useMutation({
-  mutation: (payload: { help_request_category_id: number; region: string; date: string; time: string; extra_notes?: string }) => api.post('/help-requests', payload),
-  onSuccess: () => {
-    cache.invalidateQueries({ key: ['client-help-requests'] })
-    toast.success('Hulpvraag aangemaakt.')
+let _createSnap: PaginatedResponse<HelpRequest> | null = null
+let _createSnapKey: unknown[] = []
+
+const { mutate: createRequest, isLoading: isSubmitting } = useMutation({
+  onMutate(payload: { help_request_category_id: number; region: string; date: string; time: string; extra_notes?: string }) {
+    _createSnapKey = ['client-help-requests', statusFilter.value, currentPage.value]
+    _createSnap = cache.getQueryData<PaginatedResponse<HelpRequest>>(_createSnapKey) ?? null
+    if (_createSnap) {
+      const category = categories.value?.find((c) => c.id === payload.help_request_category_id)
+      const optimistic: HelpRequest = {
+        id: -Date.now(),
+        status: 'open',
+        help_request_category_id: payload.help_request_category_id,
+        region: payload.region,
+        date: payload.date,
+        time: payload.time,
+        extra_notes: payload.extra_notes ?? null,
+        client_id: 0,
+        volunteer_id: null,
+        category,
+      }
+      cache.setQueryData<PaginatedResponse<HelpRequest>>(_createSnapKey, {
+        ..._createSnap,
+        data: [optimistic, ...(_createSnap.data ?? [])],
+        total: (_createSnap.total ?? 0) + 1,
+      })
+    }
     closeCreate()
     categoryId.value = ''
     region.value = ''
@@ -70,12 +92,19 @@ const { mutate: createRequest } = useMutation({
     time.value = ''
     notes.value = ''
   },
-  onError: (err) => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Aanmaken mislukt.'),
+  mutation: (payload: { help_request_category_id: number; region: string; date: string; time: string; extra_notes?: string }) => api.post('/help-requests', payload),
+  onSuccess: () => {
+    cache.invalidateQueries({ key: ['client-help-requests'] })
+    toast.success('Hulpvraag aangemaakt.')
+  },
+  onError: (err) => {
+    if (_createSnap) cache.setQueryData<PaginatedResponse<HelpRequest>>(_createSnapKey, _createSnap)
+    toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Aanmaken mislukt.')
+  },
 })
 
 function handleCreate() {
   if (!categoryId.value || !region.value || !date.value || !time.value) return
-  submitting.value = true
   createRequest({
     help_request_category_id: Number(categoryId.value),
     region: region.value,
@@ -83,7 +112,6 @@ function handleCreate() {
     time: time.value,
     extra_notes: notes.value || undefined,
   })
-  submitting.value = false
 }
 
 const editingRequest = ref<HelpRequest | null>(null)
@@ -109,14 +137,32 @@ function closeEdit() {
   editDialog.value?.close()
 }
 
+let _updateSnap: PaginatedResponse<HelpRequest> | null = null
+let _updateSnapKey: unknown[] = []
+
 const { mutate: updateRequest, isLoading: updating } = useMutation({
+  onMutate(payload: { id: number; data: Record<string, unknown> }) {
+    _updateSnapKey = ['client-help-requests', statusFilter.value, currentPage.value]
+    _updateSnap = cache.getQueryData<PaginatedResponse<HelpRequest>>(_updateSnapKey) ?? null
+    if (_updateSnap) {
+      const categoryIdNum = Number(payload.data.help_request_category_id)
+      const category = categories.value?.find((c) => c.id === categoryIdNum)
+      cache.setQueryData<PaginatedResponse<HelpRequest>>(_updateSnapKey, {
+        ..._updateSnap,
+        data: (_updateSnap.data ?? []).map((r) => (r.id === payload.id ? { ...r, ...payload.data, category: category ?? r.category } : r)),
+      })
+    }
+    closeEdit()
+  },
   mutation: (payload: { id: number; data: Record<string, unknown> }) => api.patch(`/help-requests/${payload.id}`, payload.data),
   onSuccess: () => {
     cache.invalidateQueries({ key: ['client-help-requests'] })
     toast.success('Hulpvraag bijgewerkt')
-    closeEdit()
   },
-  onError: (err) => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Bijwerken mislukt.'),
+  onError: (err) => {
+    if (_updateSnap) cache.setQueryData<PaginatedResponse<HelpRequest>>(_updateSnapKey, _updateSnap)
+    toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Bijwerken mislukt.')
+  },
 })
 
 function handleUpdate() {
@@ -168,10 +214,11 @@ const statusFilters = [
     <div class="page-wrap">
       <header class="page-header">
         <h1>Mijn hulpaanvragen</h1>
-        <AppButton v-if="!noSubscription" variant="primary" @click="openCreate"><i class="fa-solid fa-plus"></i> Nieuwe hulpvraag</AppButton>
+        <AppButton v-if="!subChecking && !noSubscription" variant="primary" @click="openCreate"><i class="fa-solid fa-plus"></i> Nieuwe hulpvraag</AppButton>
       </header>
 
-      <NoSubscriptionBanner v-if="noSubscription" :expired="isExpired" />
+      <AppSpinner v-if="subChecking" label="Laden..." />
+      <NoSubscriptionBanner v-else-if="noSubscription" :expired="isExpired" />
 
       <template v-else>
         <div class="tab-bar" role="tablist">
@@ -179,8 +226,9 @@ const statusFilters = [
             {{ f.label }}
           </button>
         </div>
+        <AppSpinner v-if="isLoading" label="Hulpvragen worden ingeladen..." />
 
-        <p v-if="!requests?.length" class="page-empty">Geen hulpvragen gevonden</p>
+        <p v-else-if="!requests?.length" class="page-empty">Geen hulpvragen gevonden</p>
 
         <ul v-else role="list" class="card-list">
           <li v-for="req in requests" :key="req.id" class="card helprequest-row">
@@ -198,6 +246,7 @@ const statusFilters = [
                 {{ statusConfig[req.status]?.label ?? req.status }}
               </AppBadge>
               <template v-if="req.status === 'open'">
+                <AppButton variant="secondary" size="sm" @click="router.push(`/client/volunteers?help_request_id=${req.id}`)"> <i class="fa-solid fa-magnifying-glass"></i> Zoek vrijwilliger </AppButton>
                 <AppButton variant="ghost" size="sm" @click="openEdit(req)"> <i class="fa-solid fa-pen"></i> Bewerken </AppButton>
                 <AppButton variant="danger" size="sm" :disabled="deleting" @click="confirmDelete(req)"> <i class="fa-solid fa-trash"></i> Verwijderen </AppButton>
               </template>
@@ -206,7 +255,7 @@ const statusFilters = [
           </li>
         </ul>
 
-        <AppPagination v-if="lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
+        <AppPagination v-if="!isLoading && requests?.length && lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
       </template>
     </div>
 
@@ -281,8 +330,8 @@ const statusFilters = [
       </div>
 
       <div class="dialog-actions">
-        <AppButton variant="primary" size="sm" :loading="submitting" @click="handleCreate">Hulpvraag indienen</AppButton>
-        <AppButton variant="ghost" size="sm" :disabled="submitting" @click="closeCreate">Annuleren</AppButton>
+        <AppButton variant="primary" size="sm" :loading="isSubmitting" @click="handleCreate">Hulpvraag indienen</AppButton>
+        <AppButton variant="ghost" size="sm" :disabled="isSubmitting" @click="closeCreate">Annuleren</AppButton>
       </div>
     </dialog>
   </DefaultLayout>
@@ -363,6 +412,7 @@ const statusFilters = [
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 </style>

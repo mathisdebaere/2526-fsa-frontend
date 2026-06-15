@@ -1,25 +1,29 @@
 ﻿<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuery, useMutation } from '@pinia/colada'
+import { useQuery, useMutation, useQueryCache } from '@pinia/colada'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useSubscriptionGuard } from '@/composables/useSubscriptionGuard'
 import { usePageState, usePaginatedData, PER_PAGE } from '@/composables/usePaginatedData'
-import type { Volunteer, HelpRequestCategory, PaginatedResponse } from '@/types/api'
+import type { Volunteer, HelpRequestCategory, HelpRequest, VolunteerRequest, PaginatedResponse } from '@/types/api'
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppBadge from '@/components/atoms/AppBadge.vue'
+import AppButton from '@/components/atoms/AppButton.vue'
 import AppPagination from '@/components/atoms/AppPagination.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 import NoSubscriptionBanner from '@/components/atoms/NoSubscriptionBanner.vue'
 
 const route = useRoute()
 const router = useRouter()
 const api = useApi()
 const toast = useToast()
-const { noSubscription, isExpired } = useSubscriptionGuard()
+const cache = useQueryCache()
+const { noSubscription, isExpired, isLoading: subChecking } = useSubscriptionGuard()
 const { currentPage, goToPage, resetPage } = usePageState()
 
+const helpRequestId = ref((route.query.help_request_id as string) ?? '')
 const availableOn = ref((route.query.available_on as string) ?? '')
 const timeOfDay = ref((route.query.time_of_day as string) ?? '')
 const categoryId = ref((route.query.category_id as string) ?? '')
@@ -30,6 +34,7 @@ watch(
   () => {
     resetPage()
     const q: Record<string, string> = {}
+    if (helpRequestId.value) q.help_request_id = helpRequestId.value
     if (availableOn.value) q.available_on = availableOn.value
     if (timeOfDay.value) q.time_of_day = timeOfDay.value
     if (categoryId.value) q.category_id = categoryId.value
@@ -41,7 +46,7 @@ watch(
 
 const queryKey = computed(() => ['client-volunteers', availableOn.value, timeOfDay.value, categoryId.value, savedOnly.value, currentPage.value])
 
-const { data: pageData } = useQuery({
+const { data: pageData, isLoading } = useQuery({
   key: queryKey,
   query: () => {
     const params = new URLSearchParams({ include: 'user,availabilities,categories', per_page: String(PER_PAGE), page: String(currentPage.value) })
@@ -60,7 +65,76 @@ const { data: categories } = useQuery({
   query: () => api.get<HelpRequestCategory[]>('/help-request-categories'),
 })
 
+const { data: helpRequest } = useQuery({
+  key: computed(() => ['help-request', helpRequestId.value]),
+  query: () => api.get<HelpRequest>(`/help-requests/${helpRequestId.value}?include=category`),
+  enabled: computed(() => !!helpRequestId.value),
+})
+
+function timeToTimeOfDay(time: string | null): string {
+  if (!time) return ''
+  const hours = parseInt(time.split(':')[0] ?? '0', 10)
+  if (hours < 12) return 'morning'
+  if (hours < 18) return 'afternoon'
+  return 'evening'
+}
+
+watch(
+  helpRequest,
+  (req) => {
+    if (req && helpRequestId.value) {
+      if (!categoryId.value) {
+        categoryId.value = String(req.help_request_category_id)
+      }
+      if (!availableOn.value && req.date) {
+        availableOn.value = req.date
+      }
+      if (!timeOfDay.value && req.time) {
+        timeOfDay.value = timeToTimeOfDay(req.time)
+      }
+    }
+  },
+  { immediate: true },
+)
+
+const requestsKey = computed(() => ['volunteer-requests-client'])
+
+const { data: allClientRequests } = useQuery({
+  key: requestsKey,
+  query: () => api.get<VolunteerRequest[]>('/volunteer-requests'),
+  enabled: computed(() => !!helpRequestId.value),
+})
+
+const existingRequests = computed(() => (allClientRequests.value ?? []).filter((r) => String(r.help_request_id) === helpRequestId.value))
+
+const requestedVolunteerIds = computed(() => new Set((existingRequests.value ?? []).map((r) => r.volunteer_id)))
+
+function requestStatusFor(volunteerId: number): VolunteerRequest['status'] | null {
+  return existingRequests.value?.find((r) => r.volunteer_id === volunteerId)?.status ?? null
+}
+
+const sendingRequestFor = ref<Set<number>>(new Set())
+
+const { mutate: sendRequest } = useMutation({
+  mutation: ({ volunteerId }: { volunteerId: number }) => api.post<VolunteerRequest>(`/help-requests/${helpRequestId.value}/volunteer-requests/${volunteerId}`),
+  onMutate({ volunteerId }) {
+    sendingRequestFor.value = new Set([...sendingRequestFor.value, volunteerId])
+  },
+  onSuccess(newRequest, { volunteerId }) {
+    sendingRequestFor.value = new Set([...sendingRequestFor.value].filter((id) => id !== volunteerId))
+    const current = cache.getQueryData<VolunteerRequest[]>(requestsKey.value) ?? []
+    cache.setQueryData<VolunteerRequest[]>(requestsKey.value, [...current, newRequest])
+    toast.success('Aanvraag verstuurd.')
+  },
+  onError(err, { volunteerId }) {
+    sendingRequestFor.value = new Set([...sendingRequestFor.value].filter((id) => id !== volunteerId))
+    const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+    toast.error(message ?? 'Aanvraag versturen mislukt.')
+  },
+})
+
 const favoriteOverrides = ref<Map<number, boolean>>(new Map())
+const savedTogglePulse = ref(false)
 
 function isFavorited(volunteer: Volunteer): boolean {
   return favoriteOverrides.value.has(volunteer.id) ? favoriteOverrides.value.get(volunteer.id)! : (volunteer.is_favorited ?? false)
@@ -76,6 +150,13 @@ const { mutate: toggleFavorite } = useMutation({
   },
   onMutate({ id, currently }) {
     favoriteOverrides.value.set(id, !currently)
+    toast.success(currently ? 'Verwijderd uit favorieten.' : 'Opgeslagen als favoriet.')
+    if (!currently) {
+      savedTogglePulse.value = true
+      setTimeout(() => {
+        savedTogglePulse.value = false
+      }, 600)
+    }
   },
   onError(_, { id, currently }) {
     favoriteOverrides.value.set(id, currently)
@@ -104,9 +185,21 @@ const daypartOptions = [
         <h1>Vrijwilligers</h1>
       </header>
 
-      <NoSubscriptionBanner v-if="noSubscription" :expired="isExpired" />
+      <AppSpinner v-if="subChecking" label="Laden..." />
+      <NoSubscriptionBanner v-else-if="noSubscription" :expired="isExpired" />
 
       <template v-else>
+        <div v-if="helpRequestId" class="request-banner">
+          <div class="request-banner_content">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+            <span>
+              Je zoekt een vrijwilliger voor
+              <strong>{{ helpRequest?.category?.name ?? `hulpvraag #${helpRequestId}` }}</strong
+              >. Klik op "Aanvragen" om een aanvraag te sturen.
+            </span>
+          </div>
+        </div>
+
         <div class="filters">
           <div class="filter-group">
             <label for="available-on" class="filter-label">Beschikbaar op</label>
@@ -121,23 +214,24 @@ const daypartOptions = [
           </div>
 
           <div class="filter-group">
-            <label for="category-filter" class="filter-label">Categorie ervaring</label>
+            <label for="category-filter" class="filter-label">Categorie</label>
             <select id="category-filter" v-model="categoryId" class="field-input">
               <option value="">Alle categorieën</option>
               <option v-for="category in categories" :key="category.id" :value="String(category.id)">{{ category.name }}</option>
             </select>
           </div>
 
-          <button class="saved-toggle" :class="{ 'saved-toggle-active': savedOnly }" :aria-pressed="savedOnly" @click="savedOnly = !savedOnly">
+          <button class="saved-toggle" :class="{ 'saved-toggle-active': savedOnly, 'saved-toggle--pulse': savedTogglePulse }" :aria-pressed="savedOnly" @click="savedOnly = !savedOnly">
             <i :class="savedOnly ? 'fa-solid fa-heart' : 'fa-regular fa-heart'" aria-hidden="true"></i>
-            Enkel opgeslagen
+            Toon favorieten
           </button>
         </div>
+        <AppSpinner v-if="isLoading" label="Vrijwilligers worden ingeladen..." />
 
-        <p v-if="!volunteers?.length" class="page-empty">Geen vrijwilligers gevonden.</p>
+        <p v-else-if="!volunteers?.length" class="page-empty">Geen vrijwilligers gevonden.</p>
 
         <div v-else class="card-grid">
-          <article v-for="volunteer in volunteers" :key="volunteer.id" class="card volunteer-card" @click="$router.push(`/client/volunteers/${volunteer.id}`)">
+          <article v-for="volunteer in volunteers" :key="volunteer.id" class="card volunteer-card" @click="$router.push({ path: `/client/volunteers/${volunteer.id}`, query: { from: $route.fullPath } })">
             <button :class="['volunteer-card_fav', { 'volunteer-card_fav--active': isFavorited(volunteer) }]" :aria-label="isFavorited(volunteer) ? 'Verwijder uit favorieten' : 'Sla op als favoriet'" @click.stop="toggleFavorite({ id: volunteer.id, currently: isFavorited(volunteer) })">
               <i :class="isFavorited(volunteer) ? 'fa-solid fa-heart' : 'fa-regular fa-heart'" aria-hidden="true"></i>
             </button>
@@ -164,18 +258,44 @@ const daypartOptions = [
             </div>
 
             <div class="volunteer-card_footer">
-              <RouterLink :to="`/client/volunteers/${volunteer.id}`" class="link-btn" @click.stop>Bekijken <i class="fa-solid fa-angle-right"></i></RouterLink>
+              <template v-if="helpRequestId">
+                <span v-if="requestStatusFor(volunteer.id) === 'accepted'" class="request-status request-status--accepted"> <i class="fa-solid fa-check"></i> Geaccepteerd </span>
+                <span v-else-if="requestStatusFor(volunteer.id) === 'declined'" class="request-status request-status--declined"> <i class="fa-solid fa-xmark"></i> Geweigerd </span>
+                <span v-else-if="requestedVolunteerIds.has(volunteer.id)" class="request-status request-status--pending"> <i class="fa-solid fa-clock"></i> Aangevraagd </span>
+                <AppButton v-else variant="primary" size="sm" :loading="sendingRequestFor.has(volunteer.id)" @click.stop="sendRequest({ volunteerId: volunteer.id })"> <i class="fa-solid fa-paper-plane"></i> Aanvragen </AppButton>
+              </template>
+              <RouterLink :to="{ path: `/client/volunteers/${volunteer.id}`, query: { from: $route.fullPath } }" class="link-btn" @click.stop>Bekijken <i class="fa-solid fa-angle-right"></i></RouterLink>
             </div>
           </article>
         </div>
 
-        <AppPagination v-if="lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
+        <AppPagination v-if="!isLoading && volunteers?.length && lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
       </template>
     </div>
   </DefaultLayout>
 </template>
 
 <style scoped>
+.request-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+}
+
+.request-banner_content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
 .filters {
   display: flex;
   gap: var(--spacing-md);
@@ -241,6 +361,28 @@ const daypartOptions = [
 .saved-toggle:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+.saved-toggle--pulse {
+  animation: fav-pulse 0.6s ease;
+}
+
+@keyframes fav-pulse {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.15);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  75% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .volunteer-card {
@@ -315,8 +457,33 @@ const daypartOptions = [
 }
 .volunteer-card_footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
   margin-top: auto;
   padding-top: var(--spacing-sm);
+}
+
+.request-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--border-radius-full);
+}
+.request-status--pending {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+.request-status--accepted {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+.request-status--declined {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 </style>

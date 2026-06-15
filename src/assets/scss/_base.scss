@@ -103,6 +103,13 @@ body {
   border-radius: 4px;
 }
 
+input,
+select,
+textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 a {
   color: var(--color-primary);
   text-decoration: underline;

@@ -118,12 +118,6 @@ describe('HelpRequestCard', () => {
     expect(wrapper.find('.help-card_overlay').exists()).toBe(false)
   })
 
-  it('toont "Ik wil helpen" knop wanneer vrijwilliger en status open', () => {
-    mockAuth.isVolunteer = true
-    const wrapper = mount(HelpRequestCard, { props: { request: basisVerzoek } })
-    expect(wrapper.find('.help-card_accept').exists()).toBe(true)
-  })
-
   it('toont geen "Ik wil helpen" knop wanneer niet vrijwilliger', () => {
     mockAuth.isVolunteer = false
     const wrapper = mount(HelpRequestCard, { props: { request: basisVerzoek } })
@@ -153,12 +147,5 @@ describe('HelpRequestCard', () => {
     const wrapper = mount(HelpRequestCard, { props: { request: basisVerzoek } })
     await wrapper.find('.link-btn').trigger('click')
     expect(wrapper.emitted('view')?.[0]).toEqual([1])
-  })
-
-  it('emits accept bij klik op "Ik wil helpen"', async () => {
-    mockAuth.isVolunteer = true
-    const wrapper = mount(HelpRequestCard, { props: { request: basisVerzoek } })
-    await wrapper.find('.help-card_accept').trigger('click')
-    expect(wrapper.emitted('accept')?.[0]).toEqual([1])
   })
 })

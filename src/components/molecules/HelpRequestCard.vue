@@ -1,19 +1,24 @@
 ﻿<script setup lang="ts">
 import { computed } from 'vue'
-import type { HelpRequest } from '@/types/api'
+import type { HelpRequest, VolunteerRequest } from '@/types/api'
 import { useAuthStore } from '@/stores/auth'
 import AppBadge from '@/components/atoms/AppBadge.vue'
+import AppButton from '@/components/atoms/AppButton.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 import { formatDate } from '@/utils/date'
 
 const props = defineProps<{
   request: HelpRequest
   isOwn?: boolean
   accepting?: boolean
+  volunteerRequest?: VolunteerRequest
+  responding?: boolean
 }>()
 
 const emit = defineEmits<{
   view: [id: number]
   accept: [id: number]
+  respond: [payload: { volunteerRequestId: number; action: 'accept' | 'decline' }]
 }>()
 
 const auth = useAuthStore()
@@ -35,7 +40,9 @@ const volunteerName = computed(() => {
 
 <template>
   <article class="help-card card" :class="`help-card-${request.status}`">
-    <div v-if="accepting" class="help-card_overlay" aria-hidden="true"></div>
+    <div v-if="accepting" class="help-card_overlay" aria-hidden="true">
+      <AppSpinner />
+    </div>
 
     <div class="help-card_header">
       <span class="help-card_category">
@@ -70,7 +77,13 @@ const volunteerName = computed(() => {
     <p v-if="request.extra_notes" class="help-card_notes">"{{ request.extra_notes }}"</p>
 
     <footer class="help-card_footer">
-      <button v-if="auth.isVolunteer && request.status === 'open'" class="help-card_accept" :disabled="accepting" @click="emit('accept', request.id)">Ik wil helpen</button>
+      <template v-if="auth.isVolunteer && request.status === 'open'">
+        <template v-if="volunteerRequest?.status === 'pending'">
+          <AppButton variant="primary" size="sm" :loading="responding" @click="emit('respond', { volunteerRequestId: volunteerRequest.id, action: 'accept' })"> <i class="fa-solid fa-check"></i> Accepteren </AppButton>
+          <AppButton variant="danger" size="sm" :loading="responding" @click="emit('respond', { volunteerRequestId: volunteerRequest.id, action: 'decline' })"> <i class="fa-solid fa-xmark"></i> Weigeren </AppButton>
+        </template>
+        <AppButton v-else-if="!volunteerRequest" variant="primary" size="sm" :loading="accepting" @click="emit('accept', request.id)">Ik wil helpen</AppButton>
+      </template>
       <button class="link-btn" :disabled="accepting" @click="emit('view', request.id)">Bekijken <i class="fa-solid fa-angle-right"></i></button>
     </footer>
   </article>
@@ -96,34 +109,6 @@ const volunteerName = computed(() => {
 }
 .help-card:hover {
   box-shadow: var(--shadow-md);
-}
-
-.help-card_accept {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.3rem 0.75rem;
-  background: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  border-radius: var(--border-radius);
-  color: #fff;
-  font-family: var(--font-body);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.help-card_accept:hover {
-  background: var(--color-primary-dark);
-  border-color: var(--color-primary-dark);
-}
-.help-card_accept:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.help-card_accept:focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 2px;
 }
 
 .help-card_overlay {

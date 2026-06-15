@@ -139,10 +139,8 @@ async function handleSubmit() {
     </template>
 
     <template v-else>
-      <div class="register-form_row">
-        <FormField v-model="phone" label="Telefoonnummer" type="tel" :required="true" :error="phoneError ?? fieldError('phone')" autocomplete="tel" />
-        <FormField v-model="phoneConfirmation" label="Telefoonnummer bevestigen" type="tel" :required="true" :error="phoneConfirmError" autocomplete="off" />
-      </div>
+      <FormField v-model="phone" label="Telefoonnummer" type="tel" :required="true" :error="phoneError ?? fieldError('phone')" autocomplete="tel" />
+      <FormField v-model="phoneConfirmation" label="Telefoonnummer bevestigen" type="tel" :required="true" :error="phoneConfirmError" autocomplete="off" />
       <FormField v-model="email" label="Account e-mailadres (optioneel)" type="email" :error="emailError ?? fieldError('email')" autocomplete="email" />
       <FormField v-if="email" v-model="emailConfirmation" label="E-mailadres bevestigen" type="email" :error="emailConfirmError" autocomplete="off" />
     </template>
@@ -161,8 +159,7 @@ async function handleSubmit() {
     <div class="form-group">
       <label class="register-form_checkbox-label">
         <input v-model="privacyAgreement" type="checkbox" class="register-form_checkbox" :aria-invalid="!!privacyError" required />
-        Ik ga akkoord met het
-        <RouterLink to="/privacy" target="_blank">privacybeleid</RouterLink>
+        <span>Ik ga akkoord met het <RouterLink to="/privacy" target="_blank">privacybeleid</RouterLink></span>
       </label>
       <span v-if="privacyError" class="register-form_field-error" role="alert">{{ privacyError }}</span>
     </div>
@@ -216,6 +213,16 @@ async function handleSubmit() {
 
 .register-form_toggle-btn:not(:last-child) {
   border-right: 2px solid var(--color-border);
+}
+
+@media (max-width: 28rem) {
+  .register-form_toggle {
+    flex-direction: column;
+  }
+  .register-form_toggle-btn:not(:last-child) {
+    border-right: none;
+    border-bottom: 2px solid var(--color-border);
+  }
 }
 
 .register-form_toggle-btn--active {

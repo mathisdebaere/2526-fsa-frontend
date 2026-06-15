@@ -8,6 +8,7 @@ import { formatDateWeekday as formatDate } from '@/utils/date'
 import type { Appointment } from '@/types/api'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const props = defineProps<{
   appointments: Appointment[]
@@ -105,7 +106,9 @@ function handleConfirm() {
 
 <template>
   <div class="apt-table">
-    <p v-if="!appointments.length" class="page-empty">Geen afspraken gevonden.</p>
+    <AppSpinner v-if="loading" label="Afspraken worden ingeladen..." />
+
+    <p v-else-if="!appointments.length" class="page-empty">Geen afspraken gevonden.</p>
 
     <ul v-else role="list" class="card-list">
       <li v-for="appointment in sorted" :key="appointment.id" class="card appointment-card">
@@ -133,9 +136,10 @@ function handleConfirm() {
       <h2 id="modal-title" class="dialog-title">Bevestig afspraak &amp; schrijf een ervaring</h2>
       <p class="dialog-sub">Deel je ervaring met de vrijwilliger</p>
 
-      <label for="review-content" class="dialog-label"> Jouw ervaring <span class="dialog-required" aria-hidden="true">*</span> </label>
+      <label for="review-content" class="dialog-label"> Jouw ervaring <span class="dialog-required" aria-hidden="true"></span> </label>
       <textarea id="review-content" v-model="reviewContent" class="dialog-textarea" rows="5" :aria-describedby="reviewError ? 'review-error' : undefined" />
       <p v-if="reviewError" id="review-error" class="dialog-error" role="alert">
+        Startdatum
         {{ reviewError }}
       </p>
 

@@ -43,6 +43,18 @@
   }
 }
 
+@include breakpoint(sm) {
+  .tab-bar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .tab-bar_btn {
+    flex: 1;
+    text-align: center;
+  }
+}
+
 @include breakpoint(mob) {
   .tab-bar_btn {
     padding: 0.5rem 0.875rem;

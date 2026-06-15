@@ -4,7 +4,7 @@ import RegisterForm from '@/components/organisms/RegisterForm.vue'
 </script>
 
 <template>
-  <AuthLayout>
+  <AuthLayout :show-header="false">
     <RegisterForm />
   </AuthLayout>
 </template>

@@ -11,6 +11,7 @@ import { formatDate, formatDateShort, formatDateTimeShort } from '@/utils/date'
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -187,8 +188,9 @@ const { mutate: saveNotes, isLoading: savingNotes } = useMutation({
       <div class="page_back">
         <button class="back-btn" @click="router.push('/intakes')"><i class="fa-solid fa-angle-left"></i> Terug</button>
       </div>
+      <AppSpinner v-if="isLoading" label="Intake wordt ingeladen..." />
 
-      <div v-if="intake && user" class="intake-grid">
+      <div v-else-if="intake && user" class="intake-grid">
         <div class="intake-col">
           <section class="card" aria-labelledby="user-heading">
             <h2 id="user-heading" class="card_label">Gebruiker</h2>

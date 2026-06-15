@@ -5,10 +5,12 @@ import { useAuthStore } from '@/stores/auth'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { usePageState, usePaginatedData, PER_PAGE } from '@/composables/usePaginatedData'
-import type { HelpRequest, HelpRequestCategory, PaginatedResponse } from '@/types/api'
+import type { HelpRequest, HelpRequestCategory, VolunteerRequest, PaginatedResponse } from '@/types/api'
+import { computed } from 'vue'
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import HelpRequestList from '@/components/organisms/HelpRequestList.vue'
 import AppPagination from '@/components/atoms/AppPagination.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 const auth = useAuthStore()
 const api = useApi()
@@ -22,7 +24,7 @@ const filterCategory = ref('')
 
 watch([filterStatus, filterCategory], () => resetPage())
 
-const { data: pageData } = useQuery({
+const { data: pageData, isLoading } = useQuery({
   key: () => ['help-requests', filterStatus.value, filterCategory.value, currentPage.value],
   query: () => {
     const params = new URLSearchParams({ include: 'category,volunteer.user,client.user', per_page: String(PER_PAGE), page: String(currentPage.value) })
@@ -50,7 +52,20 @@ const { data: categories } = useQuery({
   query: () => api.get<HelpRequestCategory[]>('/help-request-categories'),
 })
 
+const { data: myVolunteerRequests } = useQuery({
+  key: ['volunteer-requests-incoming'],
+  query: () => api.get<VolunteerRequest[]>('/volunteer-requests'),
+  enabled: () => auth.isVolunteer,
+})
+
+const requestedMap = computed(() => {
+  const map = new Map<number, VolunteerRequest>()
+  for (const r of myVolunteerRequests.value ?? []) map.set(r.help_request_id, r)
+  return map
+})
+
 const acceptingId = ref<number | null>(null)
+const respondingId = ref<number | null>(null)
 
 const { mutate: acceptRequest } = useMutation({
   mutation: (id: number) => api.post(`/help-requests/${id}/accept`),
@@ -60,11 +75,28 @@ const { mutate: acceptRequest } = useMutation({
   onSuccess: () => {
     acceptingId.value = null
     cache.invalidateQueries({ key: ['help-requests'] })
-    toast.success('Je hebt je aangemeld als vrijwilliger,d e cliënt ontvangt een bevestiging.')
+    toast.success('Je hebt je aangemeld als vrijwilliger, de cliënt ontvangt een bevestiging.')
   },
   onError: () => {
     acceptingId.value = null
     toast.error('Aanmelden mislukt.')
+  },
+})
+
+const { mutate: respondRequest } = useMutation({
+  mutation: ({ volunteerRequestId, action }: { volunteerRequestId: number; action: 'accept' | 'decline' }) => api.post(`/volunteer-requests/${volunteerRequestId}/${action}`),
+  onMutate: ({ volunteerRequestId }) => {
+    respondingId.value = volunteerRequestId
+  },
+  onSuccess: (_, { action }) => {
+    respondingId.value = null
+    cache.invalidateQueries({ key: ['volunteer-requests-incoming'] })
+    cache.invalidateQueries({ key: ['help-requests'] })
+    toast.success(action === 'accept' ? 'Aanvraag geaccepteerd.' : 'Aanvraag geweigerd.')
+  },
+  onError: () => {
+    respondingId.value = null
+    toast.error('Actie mislukt. Probeer opnieuw.')
   },
 })
 </script>
@@ -82,21 +114,25 @@ const { mutate: acceptRequest } = useMutation({
             {{ filter.label }}
           </button>
         </div>
-        <label for="filter-category" class="sr-only">Filter op categorie</label>
-        <select id="filter-category" v-model="filterCategory" class="page_select filter-category">
-          <option value="">Alle categorieën</option>
-          <option v-for="category in categories" :key="category.id" :value="String(category.id)">{{ category.name }}</option>
-        </select>
+        <div class="filter-group">
+          <label for="filter-category" class="filter-label">Categorie</label>
+          <select id="filter-category" v-model="filterCategory" class="field-input filter-category">
+            <option value="">Alle categorieën</option>
+            <option v-for="category in categories" :key="category.id" :value="String(category.id)">{{ category.name }}</option>
+          </select>
+        </div>
       </template>
+      <AppSpinner v-if="isLoading" label="Hulpvragen worden ingeladen..." />
+      <HelpRequestList v-else :requests="requests" :accepting-id="acceptingId" :responding-id="respondingId" :requested-map="requestedMap" @accept="acceptRequest" @respond="({ volunteerRequestId, action }) => respondRequest({ volunteerRequestId, action })" />
 
-      <HelpRequestList :requests="requests" :accepting-id="acceptingId" @accept="acceptRequest" />
-
-      <AppPagination v-if="lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
+      <AppPagination v-if="!isLoading && requests?.length && lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
     </div>
   </DefaultLayout>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/assets/scss/mixins' as *;
+
 .page {
   display: flex;
   flex-direction: column;
@@ -104,6 +140,11 @@ const { mutate: acceptRequest } = useMutation({
 }
 .filter-category {
   max-width: 18rem;
+
+  @include breakpoint(sm) {
+    max-width: 100%;
+    width: 100%;
+  }
 }
 .page_header {
   display: flex;
@@ -113,17 +154,30 @@ const { mutate: acceptRequest } = useMutation({
   flex-wrap: wrap;
 }
 
-.page_select {
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 16rem;
+}
+.filter-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.field-input {
   padding: 0.65rem 0.875rem;
   border: 2px solid var(--color-border);
   border-radius: var(--border-radius);
-  font-family: inherit;
-  font-size: var(--font-size-base);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
   background: var(--color-bg-card);
   color: var(--color-text);
+  min-height: 2.75rem;
 }
-
-.page_select:focus-visible {
+.field-input:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }

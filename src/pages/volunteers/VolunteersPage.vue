@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useQuery } from '@pinia/colada'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
@@ -8,6 +8,7 @@ import type { Volunteer, PaginatedResponse, HelpRequestCategory, Review } from '
 import DefaultLayout from '@/components/templates/DefaultLayout.vue'
 import AppAvatar from '@/components/atoms/AppAvatar.vue'
 import AppPagination from '@/components/atoms/AppPagination.vue'
+import AppSpinner from '@/components/atoms/AppSpinner.vue'
 
 type VolunteerWithReviews = Volunteer & { reviews?: Review[] }
 
@@ -16,31 +17,37 @@ const router = useRouter()
 const { currentPage, goToPage, resetPage } = usePageState()
 
 const categoryFilter = ref<number | ''>('')
+const volunteerSearch = ref('')
 
 const { data: categories } = useQuery({
   key: ['help-request-categories'],
   query: () => api.get<HelpRequestCategory[]>('/help-request-categories'),
 })
 
-const { data: pageData } = useQuery({
-  key: () => ['volunteers', currentPage.value, categoryFilter.value],
-  query: () => {
-    const include = categoryFilter.value ? 'user,reviews.appointment.helpRequest.category' : 'user'
-    const params = new URLSearchParams({ include, per_page: String(PER_PAGE), page: String(currentPage.value) })
-    return api.get<PaginatedResponse<VolunteerWithReviews>>(`/volunteers?${params}`)
-  },
+const { data: allData, isLoading } = useQuery({
+  key: ['volunteers', 'all'],
+  query: () => api.get<PaginatedResponse<VolunteerWithReviews>>('/volunteers?include=user,reviews.appointment.helpRequest.category&per_page=999'),
 })
 
-const { items: volunteersRaw, total, lastPage } = usePaginatedData<VolunteerWithReviews>(pageData)
+const { items: allVolunteers } = usePaginatedData<VolunteerWithReviews>(allData)
 
-const volunteers = computed(() => {
-  if (!categoryFilter.value || !volunteersRaw.value) return volunteersRaw.value
-  return volunteersRaw.value.filter((volunteer) => volunteer.reviews?.some((review) => review.appointment?.help_request?.category?.id === categoryFilter.value))
+const filtered = computed(() => {
+  let list = allVolunteers.value ?? []
+  if (categoryFilter.value) {
+    list = list.filter((v) => v.reviews?.some((r) => r.appointment?.help_request?.category?.id === categoryFilter.value))
+  }
+  if (volunteerSearch.value.trim()) {
+    const q = volunteerSearch.value.toLowerCase()
+    list = list.filter((v) => `${v.user?.first_name ?? ''} ${v.user?.last_name ?? ''}`.toLowerCase().includes(q))
+  }
+  return list
 })
 
-function onCategoryChange() {
-  resetPage()
-}
+const total = computed(() => filtered.value.length)
+const lastPage = computed(() => Math.max(1, Math.ceil(total.value / PER_PAGE)))
+const volunteers = computed(() => filtered.value.slice((currentPage.value - 1) * PER_PAGE, currentPage.value * PER_PAGE))
+
+watch([categoryFilter, volunteerSearch], () => resetPage())
 </script>
 
 <template>
@@ -51,15 +58,21 @@ function onCategoryChange() {
       </header>
 
       <div class="filter-bar">
-        <label for="category-filter" class="filter-bar_label">Categorie</label>
-        <select id="category-filter" v-model="categoryFilter" class="filter-bar_select" @change="onCategoryChange">
+        <label for="volunteer-search" class="sr-only">Zoek op naam</label>
+        <div class="search-wrapper">
+          <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true" />
+          <input id="volunteer-search" v-model="volunteerSearch" type="search" class="field-input search-input" placeholder="Zoek op naam" />
+        </div>
+        <label for="category-filter" class="sr-only">Categorie</label>
+        <select id="category-filter" v-model="categoryFilter" class="field-input">
           <option value="">Alle categorieën</option>
           <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
         </select>
       </div>
+      <AppSpinner v-if="isLoading" label="Vrijwilligers worden ingeladen..." />
 
-      <p v-if="!volunteers?.length" class="page-empty">
-        {{ categoryFilter ? 'Geen vrijwilligers met ervaringen in deze categorie.' : 'Geen vrijwilligers gevonden.' }}
+      <p v-else-if="!volunteers?.length" class="page-empty">
+        {{ categoryFilter ? 'Geen vrijwilligers met interesse in deze categorie.' : 'Geen vrijwilligers gevonden.' }}
       </p>
 
       <div v-else class="card-grid">
@@ -68,7 +81,8 @@ function onCategoryChange() {
 
           <div class="volunteer-card_info">
             <p class="volunteer-card_name">{{ volunteer.user?.first_name }} {{ volunteer.user?.last_name }}</p>
-            <p class="volunteer-card_sub">{{ volunteer.user?.email ?? '-' }}</p>
+            <p v-if="volunteer.user?.email" class="volunteer-card_sub">{{ volunteer.user.email }}</p>
+            <p v-else class="volunteer-card_sub volunteer-card_sub--empty">Onbekend</p>
             <p v-if="volunteer.personal_description" class="volunteer-card_desc">{{ volunteer.personal_description }}</p>
             <p v-else class="volunteer-card_desc volunteer-card_desc-empty">Geen beschrijving beschikbaar.</p>
           </div>
@@ -79,7 +93,7 @@ function onCategoryChange() {
         </article>
       </div>
 
-      <AppPagination v-if="lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
+      <AppPagination v-if="!isLoading && volunteers?.length && lastPage > 1" :current-page="currentPage" :last-page="lastPage" :total="total" :per-page="PER_PAGE" @page-change="goToPage" />
     </div>
   </DefaultLayout>
 </template>
@@ -87,28 +101,42 @@ function onCategoryChange() {
 <style scoped>
 .filter-bar {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-lg);
+  align-items: flex-end;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
 }
-.filter-bar_label {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  white-space: nowrap;
-}
-.filter-bar_select {
-  padding: 0.5rem 0.75rem;
+.field-input {
+  padding: 0.65rem 0.875rem;
   border: 2px solid var(--color-border);
   border-radius: var(--border-radius);
-  font-family: inherit;
+  font-family: var(--font-body);
   font-size: var(--font-size-sm);
   background: var(--color-bg-card);
   color: var(--color-text);
-  min-width: 14rem;
+  min-height: 2.75rem;
+  box-sizing: border-box;
 }
-.filter-bar_select:focus-visible {
+.field-input:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 14rem;
+}
+.search-icon {
+  position: absolute;
+  left: 0.875rem;
+  color: var(--color-text-muted, #888);
+  pointer-events: none;
+  font-size: 0.875rem;
+}
+.search-wrapper .field-input {
+  padding-left: 2.25rem;
+  width: 100%;
 }
 
 .volunteer-card {
@@ -137,6 +165,9 @@ function onCategoryChange() {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   margin: 0;
+}
+.volunteer-card_sub--empty {
+  font-style: italic;
 }
 .volunteer-card_desc {
   font-size: var(--font-size-sm);

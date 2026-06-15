@@ -1,15 +1,28 @@
 ﻿<script setup lang="ts">
 import ToastContainer from '@/components/organisms/ToastContainer.vue'
+
+withDefaults(
+  defineProps<{
+    showHeader?: boolean
+  }>(),
+  {
+    showHeader: true,
+  },
+)
 </script>
 
 <template>
   <a href="#main-content" class="skip-link">Ga naar inhoud</a>
   <div class="auth-layout">
-    <header class="auth-layout_header">
+    <header v-if="showHeader" class="auth-layout_header">
       <RouterLink to="/" class="auth-layout_logo-link" aria-label="FijneWijk – naar homepage">
         <img src="@/assets/images/logo.png" alt="" aria-hidden="true" class="auth-layout_logo" />
       </RouterLink>
     </header>
+    <RouterLink v-else to="/" class="link-btn auth-layout_home-link">
+      <i class="fa-solid fa-angle-left"></i>
+      <span>Terug naar homepagina</span>
+    </RouterLink>
     <main id="main-content" class="auth-layout_main">
       <slot />
     </main>
@@ -46,6 +59,17 @@ import ToastContainer from '@/components/organisms/ToastContainer.vue'
 .auth-layout_logo {
   height: 2.5rem;
   width: auto;
+}
+
+.auth-layout_home-link {
+  align-self: flex-start;
+  margin: var(--spacing-lg) var(--spacing-xl) 0;
+}
+
+@include breakpoint(sm) {
+  .auth-layout_home-link {
+    margin: var(--spacing-md) var(--spacing-md) 0;
+  }
 }
 
 .auth-layout_main {
