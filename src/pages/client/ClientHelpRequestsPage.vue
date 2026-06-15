@@ -59,7 +59,7 @@ const { data: categories } = useQuery({
 })
 
 let _createSnap: PaginatedResponse<HelpRequest> | null = null
-let _createSnapKey: unknown[] = []
+let _createSnapKey: (string | number | boolean | null)[] = []
 
 const { mutate: createRequest, isLoading: isSubmitting } = useMutation({
   onMutate(payload: { help_request_category_id: number; region: string; date: string; time: string; extra_notes?: string }) {
@@ -138,7 +138,7 @@ function closeEdit() {
 }
 
 let _updateSnap: PaginatedResponse<HelpRequest> | null = null
-let _updateSnapKey: unknown[] = []
+let _updateSnapKey: (string | number | boolean | null)[] = []
 
 const { mutate: updateRequest, isLoading: updating } = useMutation({
   onMutate(payload: { id: number; data: Record<string, unknown> }) {
