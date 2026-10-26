@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import FormField from '@/components/molecules/FormField.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
+import type { LoginPayload } from '@/types/api'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -18,6 +19,19 @@ const password = ref('')
 const submitted = ref(false)
 const loading = ref(false)
 const serverError = ref<string | null>(null)
+
+type DemoRole = 'client' | 'volunteer' | 'advisor'
+type DemoAccount = { role: DemoRole; label: string; email: string; password: string }
+
+const demoAccounts = (
+  [
+    { role: 'client', label: 'cliënt', email: import.meta.env.VITE_DEMO_CLIENT_EMAIL, password: import.meta.env.VITE_DEMO_CLIENT_PASSWORD },
+    { role: 'volunteer', label: 'vrijwilliger', email: import.meta.env.VITE_DEMO_VOLUNTEER_EMAIL, password: import.meta.env.VITE_DEMO_VOLUNTEER_PASSWORD },
+    { role: 'advisor', label: 'begeleider', email: import.meta.env.VITE_DEMO_ADVISOR_EMAIL, password: import.meta.env.VITE_DEMO_ADVISOR_PASSWORD },
+  ] as Partial<DemoAccount>[]
+).filter((account): account is DemoAccount => !!account.email && !!account.password)
+
+const demoLoading = ref<DemoRole | null>(null)
 
 const emailError = computed(() => {
   if (!submitted.value || contactMode.value !== 'email') return null
@@ -46,6 +60,25 @@ async function tryLogin() {
   loading.value = true
   try {
     const payload = contactMode.value === 'email' ? { email: email.value, password: password.value } : { phone: phone.value, password: password.value }
+    await performLogin(payload)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function demoLogin(account: DemoAccount) {
+  submitted.value = false
+  serverError.value = null
+  demoLoading.value = account.role
+  try {
+    await performLogin({ email: account.email, password: account.password })
+  } finally {
+    demoLoading.value = null
+  }
+}
+
+async function performLogin(payload: LoginPayload) {
+  try {
     await auth.login(payload)
     if (auth.isPendingApproval) {
       router.push('/pending-approval')
@@ -72,8 +105,6 @@ async function tryLogin() {
     } else {
       serverError.value = e?.response?.data?.message ?? 'Er is iets misgegaan, probeer opnieuw'
     }
-  } finally {
-    loading.value = false
   }
 }
 </script>
@@ -97,7 +128,14 @@ async function tryLogin() {
 
     <FormField id="password" v-model="password" label="Wachtwoord" type="password" :error="passwordError" autocomplete="current-password" />
 
-    <AppButton type="submit" :loading="loading" full-width size="lg"> Aanmelden </AppButton>
+    <AppButton type="submit" :loading="loading" :disabled="!!demoLoading" full-width size="lg"> Aanmelden </AppButton>
+
+    <section v-if="demoAccounts.length" class="login-form_demo" aria-labelledby="demo-title">
+      <p id="demo-title" class="login-form_demo-title">Of bekijk de demo zonder account</p>
+      <div class="login-form_demo-buttons">
+        <AppButton v-for="account in demoAccounts" :key="account.role" variant="secondary" :loading="demoLoading === account.role" :disabled="loading || (!!demoLoading && demoLoading !== account.role)" @click="demoLogin(account)"> Inloggen als {{ account.label }} </AppButton>
+      </div>
+    </section>
 
     <p class="login-form_register">
       Nog geen account?
@@ -175,6 +213,27 @@ async function tryLogin() {
   border-radius: var(--border-radius);
   font-size: var(--font-size-sm);
   border: 1px solid var(--color-danger);
+}
+
+.login-form_demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.login-form_demo-title {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.login-form_demo-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-sm);
 }
 
 .login-form_register {
