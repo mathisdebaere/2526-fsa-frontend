@@ -30,10 +30,8 @@ const { data: intake, isLoading } = useQuery({
 const user = computed(() => intake.value?.user ?? null)
 const userId = computed(() => intake.value?.user_id ?? null)
 
-// --- Contact toggle ---
 const showContact = ref(false)
 
-// --- Schedule appointment ---
 const appointmentDate = ref('')
 const appointmentTime = ref('')
 const appointmentLocation = ref('')

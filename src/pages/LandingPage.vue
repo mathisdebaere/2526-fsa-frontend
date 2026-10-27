@@ -379,7 +379,6 @@ const menuOpen = ref(false)
   }
 }
 
-// Hero
 .hero {
   position: relative;
   color: #fff;
@@ -439,7 +438,6 @@ const menuOpen = ref(false)
   }
 }
 
-// Steps
 .steps {
   padding: var(--spacing-2xl) var(--spacing-lg);
   background: var(--color-bg-card);
@@ -503,7 +501,6 @@ const menuOpen = ref(false)
   }
 }
 
-// Visual break
 .visual-break {
   width: 100%;
   max-height: 28rem;
@@ -517,7 +514,6 @@ const menuOpen = ref(false)
   }
 }
 
-// Audience
 .audience {
   padding: var(--spacing-2xl) var(--spacing-lg);
   background: var(--color-teal-light);
@@ -612,7 +608,6 @@ const menuOpen = ref(false)
   }
 }
 
-// CTA banner
 .cta-banner {
   padding: var(--spacing-2xl) var(--spacing-lg);
   background: var(--color-primary);
@@ -640,7 +635,6 @@ const menuOpen = ref(false)
   }
 }
 
-// Footer
 .lf {
   background: #002e48;
   color: rgba(255, 255, 255, 0.6);

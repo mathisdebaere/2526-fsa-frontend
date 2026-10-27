@@ -18,7 +18,6 @@ const toast = useToast()
 const cache = useQueryCache()
 const { currentPage, goToPage, resetPage } = usePageState()
 
-// Filters (adviseur)
 const filterStatus = ref('open')
 const filterCategory = ref('')
 

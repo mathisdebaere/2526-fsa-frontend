@@ -23,9 +23,7 @@ function loadSettings(): AccessibilitySettings {
         reducedMotion: !!parsed.reducedMotion,
       }
     }
-  } catch {
-    // ignore invalid stored data
-  }
+  } catch {}
   return { fontScaleIndex: 0, highContrast: false, readableFont: false, reducedMotion: false }
 }
 

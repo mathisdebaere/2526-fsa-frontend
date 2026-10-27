@@ -179,7 +179,6 @@ function handleUpdate() {
   })
 }
 
-// --- Verwijderen ---
 const { mutate: deleteRequest, isLoading: deleting } = useMutation({
   mutation: (id: number) => api.delete(`/help-requests/${id}`),
   onSuccess: () => {
